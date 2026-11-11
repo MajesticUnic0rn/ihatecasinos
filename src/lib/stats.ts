@@ -131,8 +131,8 @@ export interface HandleModel {
 /**
  * The single most useful correction to how people think about losses.
  *
- * A 2.70% edge does not mean "I lose 2.7% of my money." It means the
- * house takes 2.7% of everything that crosses the felt — and the same
+ * A 5.26% edge does not mean "I lose 5.26% of my money." It means the
+ * house takes 5.26% of everything that crosses the felt — and the same
  * chips cross it again and again. Expected loss scales with HANDLE,
  * which scales with TIME.
  */

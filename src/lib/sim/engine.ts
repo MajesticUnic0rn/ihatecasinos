@@ -5,13 +5,7 @@
  */
 
 import { makeRng, type Rng } from "../rng";
-import {
-  BET_TYPES,
-  settle,
-  spin,
-  type RuleSet,
-  type Variant,
-} from "../games/roulette";
+import { BET_TYPES, settle, spin } from "../games/roulette";
 import {
   STRATEGIES,
   initialState,
@@ -20,8 +14,6 @@ import {
 } from "../strategies";
 
 export interface SessionConfig {
-  variant: Variant;
-  rules: RuleSet;
   betId: string;
   strategy: StrategyId;
   /** Starting bankroll in dollars. */
@@ -125,8 +117,8 @@ export function runSession(
     const clamped = stake < wanted;
     if (clamped) timesClamped = true;
 
-    const pocket = spin(rng, config.variant);
-    const delta = settle(bet, stake, pocket, config.variant, config.rules);
+    const pocket = spin(rng);
+    const delta = settle(bet, stake, pocket);
     const won = delta > 0;
 
     bankroll += delta;
@@ -317,8 +309,6 @@ export function runMonteCarlo(
 }
 
 export const DEFAULT_CONFIG: SessionConfig = {
-  variant: "american",
-  rules: "standard",
   betId: "red",
   strategy: "martingale",
   bankroll: 1000,

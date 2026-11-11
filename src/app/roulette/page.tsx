@@ -14,20 +14,15 @@ export const metadata: Metadata = {
     "Every roulette payout is calculated as if zero weren't on the wheel. Spin a real 3D wheel, derive the 5.26% edge yourself, then run 100,000 Martingale sessions and watch the system fail on schedule.",
 };
 
-const americanRows = BET_TYPES.map((b) => ({
+const betRows = BET_TYPES.map((b) => ({
   label: b.label,
-  edge: edgeFor(b, "american").houseEdge,
+  edge: edgeFor(b).houseEdge,
 }));
 
-const comparison = [
-  { label: "European, La Partage, even-money", edge: edgeFor(BET_TYPES[0], "european", "la-partage").houseEdge },
-  { label: "European, single zero", edge: edgeFor(BET_TYPES[0], "european").houseEdge },
-  { label: "American, double zero", edge: edgeFor(BET_TYPES[0], "american").houseEdge },
-  { label: "American, top line (0-00-1-2-3)", edge: edgeFor(BET_TYPES.find((b) => b.id === "basket")!, "american").houseEdge },
-];
+const evenMoney = edgeFor(BET_TYPES[0]);
 
 // $1023 bankroll in $1 units = exactly 10 doublings. The textbook case.
-const textbook = analyzeMartingale(1023, 18 / 37);
+const textbook = analyzeMartingale(1023, evenMoney.pWin);
 
 export default function RoulettePage() {
   return (
@@ -43,16 +38,16 @@ export default function RoulettePage() {
         }
         lede={
           <>
-            Spin it. Change the wheel, change the bet, and the panel beside
-            it rederives the edge from scratch every time — winning pockets,
-            fair payout, actual payout, and the gap between the last two.
+            Spin it. Change the bet and the panel beside it rederives the
+            edge from scratch every time — winning pockets, fair payout,
+            actual payout, and the gap between the last two.
           </>
         }
         stats={[
-          { label: "American edge", value: "5.26%", note: "on nearly every bet" },
-          { label: "European edge", value: "2.70%", note: "one zero instead of two" },
-          { label: "With La Partage", value: "1.35%", note: "even-money bets only" },
-          { label: "Spins to lose half", value: "475", note: "$10 flat, US wheel, $500 in" },
+          { label: "House edge", value: "5.26%", note: "on every bet but one" },
+          { label: "The exception", value: "7.89%", note: "the top line, which is worse" },
+          { label: "Red wins", value: "47.37%", note: "and pays as though it were 50%" },
+          { label: "Spins to lose half", value: "475", note: "$10 flat, $500 in" },
         ]}
       >
         <div id="wheel" className="scroll-mt-20">
@@ -86,7 +81,7 @@ export default function RoulettePage() {
         <div className="grid gap-8 lg:grid-cols-2">
           <Panel>
             <EdgeBars
-              rows={americanRows}
+              rows={betRows}
               title="American wheel — house edge by bet"
               max={0.08}
               caption={
@@ -102,12 +97,44 @@ export default function RoulettePage() {
 
           <div className="flex flex-col gap-8">
             <Panel>
-              <EdgeBars
-                rows={comparison}
-                title="The same even-money bet, four rule sets"
-                max={0.08}
-                caption="Rules are the only lever that moves this number. Systems, timing and 'due' numbers all leave it exactly where it was."
-              />
+              <h3 className="mb-5 text-[0.7rem] font-bold tracking-[0.08em] uppercase opacity-60">
+                What each bet would pay if it were fair
+              </h3>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-ink text-left">
+                    <th className="py-2 pr-3 font-bold">Bet</th>
+                    <th className="py-2 pr-3 text-right font-bold">Covers</th>
+                    <th className="py-2 pr-3 text-right font-bold">Fair</th>
+                    <th className="py-2 text-right font-bold">Actual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {["red", "dozen1", "sixline", "corner", "street", "split", "straight", "basket"].map((id) => {
+                    const b = BET_TYPES.find((x) => x.id === id)!;
+                    const e = edgeFor(b);
+                    return (
+                      <tr key={id} className="border-b border-ink/15 last:border-0">
+                        <td className="py-2 pr-3 font-bold">{b.label}</td>
+                        <td className="tnum py-2 pr-3 text-right font-mono opacity-70">
+                          {b.coverCount}/38
+                        </td>
+                        <td className="tnum py-2 pr-3 text-right font-mono opacity-70">
+                          {(e.pLose / e.pWin).toFixed(2)}:1
+                        </td>
+                        <td className="tnum py-2 text-right font-mono font-bold text-ember">
+                          {b.payout}:1
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-4 text-xs leading-relaxed opacity-60">
+                The actual column is always short of the fair one, and always
+                short by the same proportion. Systems, timing and &ldquo;due&rdquo;
+                numbers leave both columns exactly where they are.
+              </p>
             </Panel>
 
             <Panel className="bg-thistle">
@@ -221,15 +248,15 @@ export default function RoulettePage() {
         <div className="mb-12 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <Prose dark>
             <p>
-              Take $1,023 and $1 units on a European wheel. That bankroll buys
-              you exactly ten doublings: 1, 2, 4, 8, … 512, summing to 1,023.
-              You lose only if red misses ten times in a row.
+              Take $1,023 and $1 units. That bankroll buys you exactly ten
+              doublings: 1, 2, 4, 8, … 512, summing to 1,023. You lose only if
+              red misses ten times in a row.
             </p>
             <p>
               P(ten consecutive losses) ={" "}
-              <strong>(19/37)¹⁰ = {pct(textbook.pCatastrophe, 4)}</strong>. So{" "}
+              <strong>(20/38)¹⁰ = {pct(textbook.pCatastrophe, 4)}</strong>. So{" "}
               {pct(textbook.pGrind, 2)} of the time you walk away up a dollar.
-              That is a <em>99.87% win rate</em>. It feels like a cheat code.
+              A win rate starting with 99 feels like a cheat code.
             </p>
             <p>Then price the other branch:</p>
             <p className="tnum rounded-[10px] border-2 border-ink bg-felt-deep px-4 py-3 text-center font-mono text-sm text-amber">
@@ -237,9 +264,9 @@ export default function RoulettePage() {
               <br />= {money(textbook.evPerSequence, 4)}
             </p>
             <p>
-              Thirty-one cents lost per sequence — which is exactly 2.70% of the
-              amount you wagered getting there. The edge is untouched. It was
-              always going to be untouched: expected value is a sum, and
+              Sixty-seven cents lost per sequence — which is exactly 5.26% of
+              the amount you wagered getting there. The edge is untouched. It
+              was always going to be untouched: expected value is a sum, and
               reordering the terms of a sum does not change it.
             </p>
             <p>
@@ -255,7 +282,7 @@ export default function RoulettePage() {
           <div className="flex flex-col gap-5">
             <div className="felt-panel p-6">
               <h3 className="mb-5 text-[0.7rem] font-bold tracking-[0.08em] text-cream/50 uppercase">
-                $1,023 bankroll · $1 unit · European wheel
+                $1,023 bankroll · $1 unit · 38 pockets
               </h3>
               <div className="grid grid-cols-2 gap-6">
                 <Stat label="Doublings available" value={textbook.doublings} tone="cream" />
@@ -274,7 +301,7 @@ export default function RoulettePage() {
                 $500 maximum permits <strong>seven</strong> doublings — not ten,
                 because the eighth bet would be $640. That moves your wipeout
                 odds from 1 in {Math.round(1 / textbook.pCatastrophe).toLocaleString()} to{" "}
-                <strong>1 in 106</strong>, and you are still only chasing one
+                <strong>1 in 89</strong>, and you are still only chasing one
                 dollar a sequence. The limit is the system&apos;s off-switch,
                 and it is bolted to every table in the building.
               </p>
@@ -324,13 +351,12 @@ export default function RoulettePage() {
           </thead>
           <tbody>
             {[
-              ["Find a single-zero wheel", "5.26% → 2.70%", "Halves the edge outright. The largest single improvement available, and it requires no skill."],
-              ["Find La Partage or En Prison", "2.70% → 1.35%", "Half the stake returns on zero. Even-money bets only — it does nothing for your straight-up numbers."],
-              ["Bet outside, not inside", "No edge change", "Identical EV, far lower variance. You will lose at the same rate, just more smoothly and over more time."],
+              ["Skip the top line", "7.89% → 5.26%", "The one bet on this wheel that is actively worse than the rest. Costs you nothing to avoid."],
               ["Make fewer, larger bets", "Cuts handle", "Expected loss scales with total wagered. Half the spins, half the expected loss — the clock is the real meter."],
-              ["Skip the top line", "7.89% → 5.26%", "The only bet on an American wheel that is actively worse than the rest."],
+              ["Bet outside, not inside", "No edge change", "Identical EV, far lower variance. You will lose at the same rate, just more smoothly and over more time."],
               ["Ignore the results board", "Behavioural", "It carries no information. It exists to increase your bet frequency."],
               ["Decide the stop-loss before you sit", "Behavioural", "The one decision that is genuinely yours, and the only one you make while not losing."],
+              ["Walk past the wheel", "5.26% → 0%", "The only move on this list that makes the number zero. Everything above it just slows the bleed."],
             ].map(([move, effect, why]) => (
               <tr key={move} className="border-b border-ink/15 last:border-0 align-top">
                 <td className="p-3 font-bold">{move}</td>
@@ -340,6 +366,22 @@ export default function RoulettePage() {
             ))}
           </tbody>
         </TableWrap>
+
+        <Callout kind="note" title="One thing this site doesn't model">
+          <p>
+            Single-zero wheels exist. Thirty-seven pockets instead of
+            thirty-eight takes the same bets from 5.26% to{" "}
+            <strong>2.70%</strong>, and a La Partage rule halves that again to{" "}
+            <strong>1.35%</strong> on even-money bets. That is the largest
+            improvement available to a roulette player and it requires no skill
+            whatsoever — only reading the wheel before you sit.
+          </p>
+          <p>
+            Everything on this page models the double-zero game, because that is
+            the one most US floors actually offer. If you have a choice between
+            the two, the choice is the whole decision.
+          </p>
+        </Callout>
 
         <Callout kind="warning" title="Not on this list">
           <p>

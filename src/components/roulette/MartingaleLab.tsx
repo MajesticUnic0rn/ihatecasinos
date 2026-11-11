@@ -9,7 +9,7 @@ import {
 } from "@/lib/sim/engine";
 import { useMonteCarlo } from "@/lib/sim/useMonteCarlo";
 import { STRATEGIES, STRATEGY_LIST, type StrategyId } from "@/lib/strategies";
-import { BET_TYPES, edgeFor, type Variant } from "@/lib/games/roulette";
+import { BET_TYPES, edgeFor } from "@/lib/games/roulette";
 import { analyzeMartingale, money, oneIn, pct } from "@/lib/stats";
 import { randomSeed } from "@/lib/rng";
 import {
@@ -106,7 +106,7 @@ export function MartingaleLab() {
     setConfig((c) => ({ ...c, [k]: v }));
 
   const bet = BET_TYPES.find((b) => b.id === config.betId)!;
-  const edge = edgeFor(bet, config.variant, config.rules);
+  const edge = edgeFor(bet);
   const analysis = analyzeMartingale(
     config.bankroll / config.baseUnit,
     edge.pWin,
@@ -194,16 +194,6 @@ export function MartingaleLab() {
             </span>
           </div>
 
-          <Segmented
-            dark
-            label="Wheel"
-            value={config.variant}
-            onChange={(v: Variant) => set("variant", v)}
-            options={[
-              { value: "american", label: "American" },
-              { value: "european", label: "European" },
-            ]}
-          />
 
           <Slider
             dark

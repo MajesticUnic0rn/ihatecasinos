@@ -7,12 +7,13 @@
  */
 import { analyzeMartingale, ruinSurvival, probAheadAfter, betStdDev, kellyFraction } from "../src/lib/stats";
 import { runMonteCarlo, binProfits, DEFAULT_CONFIG, HISTOGRAM_BINS } from "../src/lib/sim/engine";
-import { BET_TYPES, edgeFor, wheel, colorOf, RED_NUMBERS } from "../src/lib/games/roulette";
+import { BET_TYPES, edgeFor, WHEEL, POCKETS, colorOf, RED_NUMBERS } from "../src/lib/games/roulette";
 import { basicStrategy, evaluate, HARD, SOFT, PAIRS, UPCARDS } from "../src/lib/games/blackjack";
 import { PASS_WIN, pass345Edge, passWithOdds, pMakePoint, WAYS, POINTS } from "../src/lib/games/craps";
 import { exactOuts, requiredEquity, modelRake, DEFAULT_RAKE } from "../src/lib/games/poker";
 import { parseHand, makeDeck, hiLoValue, RANKS } from "../src/lib/cards";
 import { STRATEGY_LIST } from "../src/lib/strategies";
+import { Y } from "../src/components/three/RouletteWheel";
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, detail = "") => {
@@ -24,35 +25,75 @@ const near = (name: string, got: number, want: number, tol: number) =>
 const head = (s: string) => console.log(`\n${s}`);
 
 /* ---------------- roulette ---------------- */
-head("ROULETTE — wheel integrity");
-ok("European wheel has 37 unique pockets", new Set(wheel("european")).size === 37);
-ok("American wheel has 38 unique pockets", new Set(wheel("american")).size === 38);
+head("ROULETTE — wheel integrity (American double-zero only)");
+ok("38 unique pockets", new Set(WHEEL).size === 38 && POCKETS === 38);
 ok("18 red numbers", RED_NUMBERS.size === 18);
-ok("18 black numbers", wheel("european").filter((p) => colorOf(p) === "black").length === 18);
-ok("exactly one green on European", wheel("european").filter((p) => colorOf(p) === "green").length === 1);
-ok("exactly two green on American", wheel("american").filter((p) => colorOf(p) === "green").length === 2);
+ok("18 black pockets", WHEEL.filter((p) => colorOf(p) === "black").length === 18);
+ok("exactly two green pockets", WHEEL.filter((p) => colorOf(p) === "green").length === 2);
+ok("the greens are 0 and 00",
+  WHEEL.filter((p) => colorOf(p) === "green").sort().join(",") === "0,00");
+ok("no numbered pocket is green",
+  WHEEL.every((p) => p === "0" || p === "00" || colorOf(p) !== "green"));
 
-head("ROULETTE — every American bet is 5.26% except the top line");
+head("ROULETTE — every bet is 5.26% except the top line");
 for (const b of BET_TYPES) {
-  const e = edgeFor(b, "american").houseEdge;
+  const e = edgeFor(b).houseEdge;
   const want = b.id === "basket" ? 3 / 38 : 2 / 38;
   near(`${b.label}`, e, want, 1e-12);
 }
-head("ROULETTE — rule sets");
-near("European single zero", edgeFor(BET_TYPES[0], "european").houseEdge, 1 / 37, 1e-12);
-near("European + La Partage", edgeFor(BET_TYPES[0], "european", "la-partage").houseEdge, 0.5 / 37, 1e-12);
-ok("La Partage does NOT help a straight-up bet",
-  Math.abs(edgeFor(BET_TYPES.find((b) => b.id === "straight")!, "european", "la-partage").houseEdge - 1 / 37) < 1e-12);
+ok("coverCount always matches the predicate",
+  BET_TYPES.every((b) => WHEEL.filter((p) => b.covers(p)).length === b.coverCount));
+ok("the top line is the single worst bet on the layout",
+  BET_TYPES.every((b) => b.id === "basket" || edgeFor(b).houseEdge < edgeFor(BET_TYPES.find((x) => x.id === "basket")!).houseEdge));
+
+head("ROULETTE — 3D wheel vertical stack");
+// Regression guard. The pocket colours live on a flat ring at Y.POCKET;
+// any solid geometry drawn above that plane hides them, which is exactly
+// how the wheel once rendered as a plain brown disc.
+ok("bowl sits below the pocket plane", Y.BOWL_TOP < Y.POCKET);
+ok("ball track sits below the pocket plane", Y.TRACK < Y.POCKET);
+ok("labels sit above the pocket plane", Y.TEXT > Y.POCKET);
+ok("labels clear the top of the frets",
+  Y.TEXT > Y.FRET_CENTER + Y.FRET_HEIGHT / 2,
+  `text ${Y.TEXT} vs fret top ${Y.FRET_CENTER + Y.FRET_HEIGHT / 2}`);
+ok("frets start at the pocket surface",
+  Math.abs(Y.FRET_CENTER - Y.FRET_HEIGHT / 2 - Y.POCKET) < 1e-9);
+ok("a settled ball rests on the pocket surface", Y.BALL_REST > Y.POCKET && Y.BALL_REST < 0.25);
+
+head("ROULETTE — pocket colours match the physical wheel");
+ok("every pocket gets exactly one colour",
+  WHEEL.filter((p) => colorOf(p) === "red").length +
+  WHEEL.filter((p) => colorOf(p) === "black").length +
+  WHEEL.filter((p) => colorOf(p) === "green").length === WHEEL.length);
+ok("red set matches the canonical 18",
+  [...RED_NUMBERS].sort((a, b) => a - b).join(",") ===
+  "1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36");
+ok("the rendered colour of every pocket agrees with that set",
+  WHEEL.every((p) =>
+    p === "0" || p === "00"
+      ? colorOf(p) === "green"
+      : colorOf(p) === (RED_NUMBERS.has(Number(p)) ? "red" : "black")));
+ok("the 36 numbered pockets are 1..36 with no gaps or repeats",
+  WHEEL.filter((p) => p !== "0" && p !== "00")
+    .map(Number).sort((a, b) => a - b).join(",") ===
+  Array.from({ length: 36 }, (_, i) => i + 1).join(","));
 
 /* ---------------- martingale & ruin ---------------- */
-head("MARTINGALE — the textbook case ($1023, European)");
-const mg = analyzeMartingale(1023, 18 / 37);
+head("MARTINGALE — the textbook case ($1023, 38 pockets)");
+const mg = analyzeMartingale(1023, 18 / 38);
 ok("buys exactly 10 doublings", mg.doublings === 10);
 ok("total exposure is 1023 units", mg.maxExposure === 1023);
-near("P(wipeout) = (19/37)^10", mg.pCatastrophe, Math.pow(19 / 37, 10), 1e-12);
-near("EV per sequence", mg.evPerSequence, -0.3056, 1e-3);
-near("EV/stake equals the flat house edge", -mg.evPerSequence / mg.expectedStake, 1 / 37, 1e-9);
-ok("a table limit shrinks the doublings", analyzeMartingale(1e9, 18 / 37, 100).doublings === 7);
+near("P(wipeout) = (20/38)^10", mg.pCatastrophe, Math.pow(20 / 38, 10), 1e-12);
+near("wipeout is about 1 in 613", 1 / mg.pCatastrophe, 613, 1);
+near("EV per sequence", mg.evPerSequence, -0.6701, 1e-3);
+near("EV/stake equals the flat house edge", -mg.evPerSequence / mg.expectedStake, 2 / 38, 1e-9);
+{
+  // A $5 unit against a $500 table max buys 7 doublings, not 10 — the
+  // eighth bet would be $640. This is the real off-switch.
+  const capped = analyzeMartingale(1e9, 18 / 38, 100);
+  ok("a table limit shrinks the doublings to 7", capped.doublings === 7);
+  near("and wipeout odds to about 1 in 89", 1 / capped.pCatastrophe, 89, 1);
+}
 
 head("GAMBLER'S RUIN");
 near("fair game is proportional", ruinSurvival(40, 100, 0.5), 0.4, 1e-9);
@@ -64,10 +105,13 @@ ok("P(ahead) decays with n", probAheadAfter(10000, 2 / 38, betStdDev(18 / 38, 1)
 
 /* ---------------- engine ---------------- */
 head("ENGINE — flat betting must realise the book edge (Monte Carlo)");
-for (const [v, want] of [["american", 2 / 38], ["european", 1 / 37]] as const) {
-  const r = runMonteCarlo({ ...DEFAULT_CONFIG, variant: v, strategy: "flat", bankroll: 1e7,
-    baseUnit: 1, tableMin: 1, tableMax: 1e6, maxBets: 4000, targetProfit: 0, seed: `t-${v}` }, 400);
-  near(`${v} realised edge`, r.realizedEdge, want, 0.004);
+{
+  const r = runMonteCarlo({ ...DEFAULT_CONFIG, strategy: "flat", bankroll: 1e7,
+    baseUnit: 1, tableMin: 1, tableMax: 1e6, maxBets: 4000, targetProfit: 0, seed: "t-flat" }, 400);
+  near("realised edge on an even-money bet", r.realizedEdge, 2 / 38, 0.004);
+  const s35 = runMonteCarlo({ ...DEFAULT_CONFIG, betId: "straight", strategy: "flat", bankroll: 1e7,
+    baseUnit: 1, tableMin: 1, tableMax: 1e6, maxBets: 6000, targetProfit: 0, seed: "t-35" }, 400);
+  near("realised edge on a 35:1 straight-up", s35.realizedEdge, 2 / 38, 0.006);
 }
 head("ENGINE — no progression can change the realised edge");
 // Stakes are capped at 256 units deliberately. Left unbounded, a
@@ -78,9 +122,9 @@ head("ENGINE — no progression can change the realised edge");
 // EV is linear, so ANY stake rule driven only by past results realises
 // exactly the flat house edge.
 for (const s of ["martingale", "dalembert", "fibonacci", "paroli", "grand-martingale"] as const) {
-  const r = runMonteCarlo({ ...DEFAULT_CONFIG, variant: "european", strategy: s, bankroll: 1e7,
+  const r = runMonteCarlo({ ...DEFAULT_CONFIG, strategy: s, bankroll: 1e7,
     baseUnit: 1, tableMin: 1, tableMax: 256, maxBets: 2000, targetProfit: 0, seed: `t-${s}` }, 1500);
-  near(`${s} realised edge ≈ 2.70%`, r.realizedEdge, 1 / 37, 0.004);
+  near(`${s} realised edge ≈ 5.26%`, r.realizedEdge, 2 / 38, 0.004);
 }
 
 head("RACE — shared binning for small multiples");
@@ -111,7 +155,7 @@ head("RACE — shared binning for small multiples");
 
 head("RACE — the spread across systems is sampling noise, and shrinks");
 {
-  const theory = edgeFor(BET_TYPES[0], DEFAULT_CONFIG.variant).houseEdge;
+  const theory = edgeFor(BET_TYPES[0]).houseEdge;
   const widthAt = (trials: number) => {
     const es = STRATEGY_LIST.map((st) =>
       runMonteCarlo({ ...DEFAULT_CONFIG, strategy: st.id, seed: "conv" }, trials).realizedEdge);

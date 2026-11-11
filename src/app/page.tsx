@@ -103,8 +103,8 @@ export default function Home() {
                 { label: "Blackjack (3:2, basic strategy)", edge: 0.005 },
                 { label: "Craps (pass + 3-4-5× odds)", edge: 0.00374 },
                 { label: "Craps (pass line alone)", edge: 0.0141 },
-                { label: "Roulette (European)", edge: 0.027 },
                 { label: "Blackjack (6:5, basic strategy)", edge: 0.0189 },
+                { label: "Craps (field)", edge: 0.0278 },
                 { label: "Roulette (American)", edge: 0.0526 },
                 { label: "Craps (any 7)", edge: 0.1667 },
               ]}

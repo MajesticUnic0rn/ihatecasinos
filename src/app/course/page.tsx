@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHero, Section, Prose } from "@/components/PageHero";
+import { Section, Prose } from "@/components/PageHero";
 import { EdgeBars } from "@/components/viz/charts";
 import { Badge, Callout, Panel, TableWrap } from "@/components/ui";
 
@@ -93,24 +93,37 @@ const SYLLABUS = [
 export default function CoursePage() {
   return (
     <>
-      <PageHero
-        eyebrow="The whole thing, in one page"
-        title="Seven ideas. The casino is just where they are easiest to see."
-        lede={
-          <>
-            Casinos are an unusually good classroom for probability: the rules
-            are published, the payouts are fixed, nothing is hidden, and the
-            stakes are real enough that the lessons stick. Here is everything
-            the four game pages are actually teaching, stated without the felt.
-          </>
-        }
-        stats={[
-          { label: "Lessons", value: "7" },
-          { label: "Games", value: "4" },
-          { label: "Betting systems that work", value: "0" },
-          { label: "Required math", value: "Arithmetic" },
-        ]}
-      />
+      {/* Slim header. The page leads with the syllabus itself — an h1 is
+          kept for document structure and search, nothing more. */}
+      <section className="felt grain relative border-b-2 border-ink">
+        <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-end md:justify-between md:px-8 md:py-12">
+          <div>
+            <Badge tone="paper" className="mb-4">
+              The course
+            </Badge>
+            <h1 className="text-h3 md:text-h2 font-bold text-balance text-cream">
+              The seven concepts
+            </h1>
+          </div>
+          <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4 md:max-w-xl">
+            {[
+              { label: "Concepts", value: "7" },
+              { label: "Games", value: "4" },
+              { label: "Systems that work", value: "0" },
+              { label: "Required math", value: "Arithmetic" },
+            ].map((s) => (
+              <div key={s.label} className="flex flex-col gap-1">
+                <dt className="text-[0.65rem] font-bold tracking-[0.08em] text-cream/45 uppercase">
+                  {s.label}
+                </dt>
+                <dd className="tnum font-mono text-xl font-bold text-cream">
+                  {s.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
 
       {/* ---------------- syllabus ---------------- */}
       <Section tone="paper">
@@ -169,14 +182,13 @@ export default function CoursePage() {
                 { label: "Craps: pass line", edge: 0.01414 },
                 { label: "Craps: place 6 or 8", edge: 0.0152 },
                 { label: "Blackjack: basic strategy, 6:5", edge: 0.0189 },
-                { label: "Roulette: European", edge: 0.027 },
                 { label: "Craps: field", edge: 0.0278 },
                 { label: "Roulette: American", edge: 0.0526 },
                 { label: "Blackjack: insurance", edge: 0.074 },
                 { label: "Craps: Big 6 / Big 8", edge: 0.0909 },
                 { label: "Craps: any 7", edge: 0.1667 },
               ]}
-              caption="Roulette with La Partage (1.35%) applies only to even-money bets. Poker is absent because its house edge is genuinely zero — the rake is a separate mechanism, and a larger one."
+              caption="Roulette here is the American double-zero wheel, the one most US floors offer. Poker is absent because its house edge is genuinely zero — the rake is a separate mechanism, and a larger one."
             />
           </Panel>
 
@@ -224,7 +236,7 @@ export default function CoursePage() {
               ["\"Martingale can't lose if you have enough money.\"", "False", "True only with an infinite bankroll AND no table limit. Both fail, and the table limit fails first."],
               ["\"I'm up, so I'm playing with the house's money.\"", "False", "Once won, it's your money, and it is exposed to exactly the same edge as the rest."],
               ["\"Card counting is illegal.\"", "False", "It's legal. Casinos are private property and may bar you anyway, which accomplishes the same thing."],
-              ["\"Blackjack has the best odds in the casino.\"", "Partly", "Only at 3:2 with basic strategy. At 6:5 it's worse than European roulette, and most players don't use basic strategy."],
+              ["\"Blackjack has the best odds in the casino.\"", "Partly", "Only at 3:2 with basic strategy. At 6:5 it is worse than the craps pass line, and most players don't use basic strategy anyway."],
               ["\"Taking odds in craps lowers the house edge.\"", "True-ish", "It lowers the edge as a PERCENTAGE by enlarging the denominator. Your expected dollar loss per decision is unchanged; variance rises."],
               ["\"Poker is a game of skill.\"", "True", "And still unprofitable for most players, because the rake exceeds the skill gap in most games."],
               ["\"Slot machines are due to hit.\"", "False", "Independent draws with a fixed return-to-player, typically 88–96%. The worst edge on the floor by a wide margin."],

@@ -2,18 +2,10 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import {
-  BET_TYPES,
-  colorOf,
-  edgeFor,
-  settle,
-  wheel,
-  type RuleSet,
-  type Variant,
-} from "@/lib/games/roulette";
+import { BET_TYPES, WHEEL, colorOf, edgeFor, settle } from "@/lib/games/roulette";
 import { makeRng, randomSeed, type Rng } from "@/lib/rng";
 import { money, oneIn, pct } from "@/lib/stats";
-import { Badge, Button, Segmented, Stat, cx } from "@/components/ui";
+import { Badge, Button, Stat, cx } from "@/components/ui";
 
 const RouletteWheel = dynamic(
   () => import("@/components/three/RouletteWheel"),
@@ -36,8 +28,6 @@ const SWATCH: Record<string, string> = {
 };
 
 export function WheelLab() {
-  const [variant, setVariant] = React.useState<Variant>("american");
-  const [rules, setRules] = React.useState<RuleSet>("standard");
   const [betId, setBetId] = React.useState("red");
   const [spinId, setSpinId] = React.useState(0);
   const [target, setTarget] = React.useState<number | null>(null);
@@ -54,21 +44,8 @@ export function WheelLab() {
   const rng = () => (rngRef.current ??= makeRng(randomSeed()))();
 
   const bet = BET_TYPES.find((b) => b.id === betId)!;
-  const available = BET_TYPES.filter(
-    (b) => !b.americanOnly || variant === "american",
-  );
-  const breakdown = edgeFor(bet, variant, rules);
-  const pockets = wheel(variant);
-
-  // Reconciled in the handler, not in an effect. Switching to European
-  // strands the American-only basket bet, and La Partage doesn't exist on
-  // a double-zero wheel — both are consequences of THIS click, so they
-  // belong here rather than in a render-triggered correction pass.
-  const changeVariant = (v: Variant) => {
-    setVariant(v);
-    if (v === "european" && betId === "basket") setBetId("red");
-    if (v === "american") setRules("standard");
-  };
+  const breakdown = edgeFor(bet);
+  const pockets = WHEEL;
 
   // The pending outcome lives in a ref. Settling must NOT read it out of
   // a state updater: React invokes updaters twice in development, which
@@ -94,7 +71,7 @@ export function WheelLab() {
     if (idx === null) return;
 
     const pocket = pockets[idx];
-    const delta = settle(bet, 10, pocket, variant, rules);
+    const delta = settle(bet, 10, pocket);
     setProfit((p) => p + delta);
     setStaked((s) => s + 10);
     setHistory((h) => [pocket, ...h].slice(0, 40));
@@ -110,7 +87,7 @@ export function WheelLab() {
   };
 
   const result = target !== null && !spinning ? pockets[target] : null;
-  const won = result ? bet.covers(result, variant) : false;
+  const won = result ? bet.covers(result) : false;
   const expected = -staked * breakdown.houseEdge;
 
   return (
@@ -119,7 +96,6 @@ export function WheelLab() {
         {/* ---------------- wheel ---------------- */}
         <div className="relative min-h-[360px] border-b-2 border-ink lg:border-r-2 lg:border-b-0">
           <RouletteWheel
-            variant={variant}
             targetIndex={target}
             spinId={spinId}
             onSettled={onSettled}
@@ -174,30 +150,6 @@ export function WheelLab() {
 
         {/* ---------------- controls + derivation ---------------- */}
         <div className="flex flex-col gap-6 p-6 md:p-8">
-          <div className="flex flex-wrap gap-5">
-            <Segmented
-              dark
-              label="Wheel"
-              value={variant}
-              onChange={changeVariant}
-              options={[
-                { value: "american", label: "American", hint: "38 pockets, two zeros" },
-                { value: "european", label: "European", hint: "37 pockets, one zero" },
-              ]}
-            />
-            {variant === "european" && (
-              <Segmented
-                dark
-                label="Zero rule"
-                value={rules}
-                onChange={(v) => setRules(v)}
-                options={[
-                  { value: "standard", label: "Standard" },
-                  { value: "la-partage", label: "La Partage", hint: "Half back on zero, even-money bets only" },
-                ]}
-              />
-            )}
-          </div>
 
           <div className="flex flex-col gap-2">
             <span className="text-[0.7rem] font-bold tracking-[0.08em] text-cream/60 uppercase">
@@ -209,14 +161,14 @@ export function WheelLab() {
               className="w-full rounded-[12px] border-2 border-ink bg-felt-deep px-3 py-2.5 text-sm font-bold text-cream"
             >
               <optgroup label="Outside (even-ish money)">
-                {available.filter((b) => b.group === "outside").map((b) => (
+                {BET_TYPES.filter((b) => b.group === "outside").map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.label} — pays {b.payout}:1
                   </option>
                 ))}
               </optgroup>
               <optgroup label="Inside (long shots)">
-                {available.filter((b) => b.group === "inside").map((b) => (
+                {BET_TYPES.filter((b) => b.group === "inside").map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.label} — pays {b.payout}:1
                   </option>
@@ -243,9 +195,9 @@ export function WheelLab() {
               />
             </dl>
             <p className="mt-3 text-xs leading-relaxed text-cream/55">
-              The payout is calculated as if the {breakdown.pockets - 36 === 2 ? "two zeros" : "zero"}{" "}
-              {breakdown.pockets - 36 === 2 ? "weren't" : "wasn't"} on the wheel.
-              That gap — {pct(breakdown.houseEdge)} — is the entire business.
+              The payout is calculated as if the two zeros weren&apos;t on the
+              wheel. That gap — {pct(breakdown.houseEdge)} — is the entire
+              business.
             </p>
           </div>
 

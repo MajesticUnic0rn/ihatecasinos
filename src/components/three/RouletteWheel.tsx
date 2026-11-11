@@ -4,7 +4,7 @@ import * as React from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
-import { colorOf, wheel, type Variant } from "@/lib/games/roulette";
+import { WHEEL, colorOf } from "@/lib/games/roulette";
 
 /**
  * The wheel is ANIMATED, not simulated.
@@ -17,14 +17,32 @@ import { colorOf, wheel, type Variant } from "@/lib/games/roulette";
  */
 
 const POCKET_COLORS: Record<string, string> = {
-  red: "#c8252c",
-  black: "#15212b",
-  green: "#1f7a4d",
+  red: "#d42a30",
+  black: "#0e1620",
+  green: "#17864f",
 };
 
 const OUTER = 4.1;
 const POCKET_OUTER = 3.55;
 const POCKET_INNER = 2.5;
+
+/**
+ * Explicit vertical stack, because the colours live on a flat ring and
+ * anything solid drawn above it hides them. Everything structural sits
+ * strictly BELOW Y.POCKET; everything legible sits strictly above.
+ */
+export const Y = {
+  BOWL_TOP: -0.05,
+  TRACK: -0.02,
+  POCKET: 0,
+  // Frets are deliberately low and the labels sit just above their tops.
+  // Taller frets occlude the numbers on the near side of the wheel at
+  // this camera angle; 0.01 of clearance costs no visible parallax.
+  FRET_CENTER: 0.045,
+  FRET_HEIGHT: 0.09,
+  TEXT: 0.1,
+  BALL_REST: 0.17,
+};
 
 function easeOutQuart(t: number) {
   return 1 - Math.pow(1 - t, 4);
@@ -33,8 +51,8 @@ function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function Pockets({ variant }: { variant: Variant }) {
-  const pockets = wheel(variant);
+function Pockets() {
+  const pockets = WHEEL;
   const seg = (Math.PI * 2) / pockets.length;
 
   return (
@@ -47,7 +65,7 @@ function Pockets({ variant }: { variant: Variant }) {
 
         return (
           <group key={`${label}-${i}`}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y.POCKET, 0]}>
               <ringGeometry
                 args={[POCKET_INNER, POCKET_OUTER, 24, 1, start, seg]}
               />
@@ -63,12 +81,12 @@ function Pockets({ variant }: { variant: Variant }) {
             <mesh
               position={[
                 Math.cos(start) * r,
-                0.12,
+                Y.FRET_CENTER,
                 -Math.sin(start) * r,
               ]}
               rotation={[0, start, 0]}
             >
-              <boxGeometry args={[POCKET_OUTER - POCKET_INNER, 0.22, 0.045]} />
+              <boxGeometry args={[POCKET_OUTER - POCKET_INNER, Y.FRET_HEIGHT, 0.045]} />
               <meshStandardMaterial
                 color="#d9c89a"
                 metalness={0.85}
@@ -77,7 +95,7 @@ function Pockets({ variant }: { variant: Variant }) {
             </mesh>
 
             <Text
-              position={[Math.cos(mid) * r, 0.1, -Math.sin(mid) * r]}
+              position={[Math.cos(mid) * r, Y.TEXT, -Math.sin(mid) * r]}
               rotation={[-Math.PI / 2, 0, mid - Math.PI / 2]}
               fontSize={0.34}
               color="#f1f6f1"
@@ -95,13 +113,11 @@ function Pockets({ variant }: { variant: Variant }) {
 }
 
 function WheelBody({
-  variant,
   targetIndex,
   spinId,
   onSettled,
   duration = 5.2,
 }: {
-  variant: Variant;
   targetIndex: number | null;
   spinId: number;
   onSettled?: () => void;
@@ -110,8 +126,7 @@ function WheelBody({
   const wheelRef = React.useRef<THREE.Group>(null);
   const ballRef = React.useRef<THREE.Mesh>(null);
 
-  const pockets = wheel(variant);
-  const seg = (Math.PI * 2) / pockets.length;
+  const seg = (Math.PI * 2) / WHEEL.length;
 
   const start = React.useRef<number | null>(null);
   const settled = React.useRef(false);
@@ -135,11 +150,11 @@ function WheelBody({
         const a = restAngle.current + w.rotation.y;
         ball.position.set(
           Math.cos(a) * ((POCKET_INNER + POCKET_OUTER) / 2),
-          0.26,
+          Y.BALL_REST,
           -Math.sin(a) * ((POCKET_INNER + POCKET_OUTER) / 2),
         );
       } else {
-        ball.position.set(Math.cos(state.clock.elapsedTime) * 3.9, 0.3, -Math.sin(state.clock.elapsedTime) * 3.9);
+        ball.position.set(Math.cos(state.clock.elapsedTime) * 3.9, 0.28, -Math.sin(state.clock.elapsedTime) * 3.9);
       }
       return;
     }
@@ -167,7 +182,7 @@ function WheelBody({
     // A couple of hops as it drops off the track.
     const dropPhase = Math.max(0, (t - 0.6) / 0.4);
     const bounce = dropPhase > 0 ? Math.abs(Math.sin(dropPhase * Math.PI * 3)) * (1 - dropPhase) * 0.5 : 0;
-    const y = THREE.MathUtils.lerp(0.42, 0.26, dropPhase) + bounce;
+    const y = THREE.MathUtils.lerp(0.42, Y.BALL_REST, dropPhase) + bounce;
 
     ball.position.set(Math.cos(world) * radius, y, -Math.sin(world) * radius);
 
@@ -179,18 +194,27 @@ function WheelBody({
 
   return (
     <group>
-      {/* outer bowl */}
-      <mesh position={[0, -0.22, 0]} receiveShadow>
+      {/* Outer bowl. Its top face must stay under Y.POCKET — as a solid
+          cylinder reaching above that plane it silently covered the whole
+          coloured ring, which is exactly the bug this stack prevents. */}
+      <mesh position={[0, Y.BOWL_TOP - 0.25, 0]} receiveShadow>
         <cylinderGeometry args={[OUTER + 0.5, OUTER + 0.75, 0.5, 64]} />
         <meshStandardMaterial color="#2a1a12" roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.03, 0]}>
-        <cylinderGeometry args={[OUTER, OUTER, 0.12, 64]} />
-        <meshStandardMaterial color="#3b2419" roughness={0.6} />
+
+      {/* Ball track: a flat ring OUTSIDE the pockets rather than a solid
+          disc under them, so there is nothing to occlude in the first place. */}
+      <mesh position={[0, Y.TRACK, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <ringGeometry args={[POCKET_OUTER, OUTER + 0.45, 64]} />
+        <meshStandardMaterial
+          color="#3b2419"
+          roughness={0.6}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       <group ref={wheelRef}>
-        <Pockets variant={variant} />
+        <Pockets />
         {/* turret */}
         <mesh position={[0, 0.26, 0]}>
           <cylinderGeometry args={[POCKET_INNER - 0.35, POCKET_INNER - 0.02, 0.46, 48]} />
@@ -215,7 +239,6 @@ function WheelBody({
 }
 
 export interface RouletteWheelProps {
-  variant: Variant;
   /** Index into the physical wheel order. null = idle. */
   targetIndex: number | null;
   /** Bump to re-trigger a spin for the same pocket. */
@@ -225,7 +248,6 @@ export interface RouletteWheelProps {
 }
 
 export default function RouletteWheel({
-  variant,
   targetIndex,
   spinId,
   onSettled,
@@ -240,12 +262,11 @@ export default function RouletteWheel({
       >
         <color attach="background" args={["#0d1a22"]} />
         <fog attach="fog" args={["#0d1a22", 18, 32]} />
-        <ambientLight intensity={0.55} />
+        <ambientLight intensity={0.7} />
         <directionalLight position={[5, 9, 4]} intensity={1.5} castShadow />
         <directionalLight position={[-6, 4, -5]} intensity={0.5} color="#6e61ff" />
-        <pointLight position={[0, 4, 0]} intensity={18} color="#ffa352" distance={14} />
+        <pointLight position={[0, 4, 0]} intensity={7} color="#ffd2a6" distance={14} />
         <WheelBody
-          variant={variant}
           targetIndex={targetIndex}
           spinId={spinId}
           onSettled={onSettled}
