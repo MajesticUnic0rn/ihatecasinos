@@ -13,6 +13,11 @@ import { PASS_WIN, pass345Edge, passWithOdds, pMakePoint, WAYS, POINTS } from ".
 import { exactOuts, requiredEquity, modelRake, DEFAULT_RAKE } from "../src/lib/games/poker";
 import { parseHand, makeDeck, hiLoValue, RANKS } from "../src/lib/cards";
 import { STRATEGY_LIST } from "../src/lib/strategies";
+import {
+  DEFAULT_COUNT_CONFIG, betAtTrueCount, dealShoe, edgeAtTrueCount,
+  roundsPerHour, simulateCounting,
+} from "../src/lib/games/counting";
+import { makeRng } from "../src/lib/rng";
 import { Y } from "../src/components/three/RouletteWheel";
 
 let pass = 0, fail = 0;
@@ -212,6 +217,82 @@ ok("double falls back to hit when not allowed",
   basicStrategy(parseHand("6h 5s"), parseHand("5d")[0].rank, { canDouble: false }) === "H");
 ok("soft-18 double falls back to STAND when not allowed",
   basicStrategy(parseHand("Ah 7s"), parseHand("3d")[0].rank, { canDouble: false }) === "S");
+
+head("BLACKJACK — the Hi-Lo edge model and bet ramp");
+near("break-even sits at true count +1", edgeAtTrueCount(1), 0, 1e-12);
+near("each true count is worth half a point", edgeAtTrueCount(3) - edgeAtTrueCount(2), 0.005, 1e-12);
+near("flat basic strategy is about -0.5%", edgeAtTrueCount(0), -0.005, 1e-12);
+ok("ramp bets one unit at or below TC +1",
+  betAtTrueCount(-3, 8) === 1 && betAtTrueCount(0, 8) === 1 && betAtTrueCount(1, 8) === 1);
+ok("ramp reaches the top of the spread by TC +4", betAtTrueCount(4, 8) === 8);
+ok("ramp never exceeds the spread",
+  [2, 4, 8, 12, 16].every((sp) => [1,2,3,4,6,10,20].every((tc) => betAtTrueCount(tc, sp) <= sp)));
+ok("ramp is monotone in the true count",
+  [1,2,3,4,5,6].every((tc, i, a) => i === 0 || betAtTrueCount(a[i], 8) >= betAtTrueCount(a[i-1], 8)));
+ok("a flat spread is flat at every count",
+  [-2, 0, 3, 9].every((tc) => betAtTrueCount(tc, 1) === 1));
+
+head("BLACKJACK — shoe dealing");
+{
+  const cfg = { ...DEFAULT_COUNT_CONFIG, decks: 6, penetration: 0.75 };
+  const shoe = dealShoe(makeRng("shoe"), cfg);
+  ok("the first bet is placed at a count of zero", shoe[0].running === 0);
+  ok("rounds are produced", shoe.length > 10);
+  ok("dealing stops at the cut card",
+    shoe[shoe.length - 1].depth >= 0.74 && shoe[shoe.length - 1].depth <= 0.90,
+    `last depth ${(shoe[shoe.length - 1].depth * 100).toFixed(1)}%`);
+  ok("decks remaining is always positive", shoe.every((r) => r.decksRemaining > 0));
+  ok("true count is the running count over decks left",
+    shoe.every((r) => Math.abs(r.trueCount - r.running / r.decksRemaining) < 1e-9));
+  ok("every round deals at least two cards per spot plus the dealer",
+    shoe.every((r) => r.dealt.length >= 2 * (cfg.otherPlayers + 2)));
+  ok("deeper penetration deals more rounds",
+    dealShoe(makeRng("s2"), { ...cfg, penetration: 0.85 }).length >
+    dealShoe(makeRng("s2"), { ...cfg, penetration: 0.5 }).length);
+  ok("more players means fewer rounds per shoe",
+    dealShoe(makeRng("s3"), { ...cfg, otherPlayers: 6 }).length <
+    dealShoe(makeRng("s3"), { ...cfg, otherPlayers: 0 }).length);
+}
+
+head("BLACKJACK — counting economics");
+{
+  const sim = (over: Partial<typeof DEFAULT_COUNT_CONFIG>) =>
+    simulateCounting(makeRng("c"), { ...DEFAULT_COUNT_CONFIG, ...over }, 250);
+
+  near("flat betting reproduces the basic-strategy baseline",
+    sim({ spread: 1 }).overallEdge, -0.005, 0.0015);
+
+  const pens = [0.5, 0.67, 0.75, 0.85].map((p) => sim({ penetration: p }));
+  ok("deeper penetration strictly raises the hourly rate",
+    pens.every((p, i) => i === 0 || p.unitsPerHour > pens[i - 1].unitsPerHour),
+    pens.map((p) => p.unitsPerHour.toFixed(3)).join(" -> "));
+  ok("a 50% shoe leaves a 1-8 counter losing money", pens[0].overallEdge < 0,
+    `${(pens[0].overallEdge * 100).toFixed(3)}%`);
+  ok("a 75% shoe puts a 1-8 counter ahead", pens[2].overallEdge > 0,
+    `${(pens[2].overallEdge * 100).toFixed(3)}%`);
+
+  const wide = [1, 2, 4, 8, 12].map((sp) => sim({ spread: sp }));
+  ok("a wider spread strictly raises the edge",
+    wide.every((w, i) => i === 0 || w.overallEdge > wide[i - 1].overallEdge));
+
+  const tables = [0, 2, 4, 6].map((n) => sim({ otherPlayers: n }));
+  ok("more players cuts the hourly rate",
+    tables.every((t, i) => i === 0 || t.unitsPerHour < tables[i - 1].unitsPerHour),
+    tables.map((t) => t.unitsPerHour.toFixed(3)).join(" -> "));
+  ok("more players barely moves the edge PER ROUND",
+    Math.abs(tables[0].overallEdge - tables[3].overallEdge) < 0.001,
+    "the loss is hands per hour, not edge");
+  ok("rounds per hour falls with table size",
+    roundsPerHour(1) > roundsPerHour(4) && roundsPerHour(4) > roundsPerHour(7));
+
+  ok("fewer decks is a better counting game",
+    sim({ decks: 1 }).overallEdge > sim({ decks: 8 }).overallEdge);
+  ok("the counter is at a disadvantage most of the time",
+    sim({}).pAdvantage < 0.35 && sim({}).pAdvantage > 0.1,
+    `${(sim({}).pAdvantage * 100).toFixed(1)}%`);
+  ok("true-count distribution sums to 1",
+    Math.abs(sim({}).distribution.reduce((a, b) => a + b.share, 0) - 1) < 1e-9);
+}
 
 head("BLACKJACK — counting");
 ok("Hi-Lo over a full deck sums to zero", makeDeck().reduce((a, c) => a + hiLoValue(c.rank), 0) === 0);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
 import { StrategyChart } from "@/components/blackjack/StrategyChart";
 import { BlackjackTable } from "@/components/blackjack/BlackjackTable";
+import { CountingLab } from "@/components/blackjack/CountingLab";
 import { EdgeBars } from "@/components/viz/charts";
 import { Badge, Callout, Marquee, Panel, TableWrap } from "@/components/ui";
 import { DEALER_BUST, P_BLACKJACK, RULE_EFFECTS, UPCARDS } from "@/lib/games/blackjack";
@@ -252,7 +253,7 @@ export default function BlackjackPage() {
               </p>
               <p>
                 So a good counter plays a game with maybe a{" "}
-                <strong>0.5–1.5% edge</strong>, available in short bursts,
+                <strong>0.3–1.5% edge</strong>, available in short bursts,
                 requiring a large bankroll to survive the variance, bet spreads
                 that are obvious to anyone watching, and perfect play under
                 pressure for hours.
@@ -292,6 +293,25 @@ export default function BlackjackPage() {
             ))}
           </tbody>
         </TableWrap>
+      </Section>
+
+      {/* ---------------- counting simulator ---------------- */}
+      <Section
+        id="counting"
+        tone="felt"
+        eyebrow="Count a shoe yourself"
+        title="The arithmetic is the easy part. The shoe decides everything."
+        lede={
+          <>
+            Hi-Lo takes an afternoon to learn: +1 for 2 through 6, −1 for tens
+            and aces, divide by the decks left. What actually determines
+            whether any of it is worth doing is how deep they cut the shoe and
+            how many people are sitting at the table. Move those two and watch
+            a winning game turn into a losing one.
+          </>
+        }
+      >
+        <CountingLab />
       </Section>
 
       {/* ---------------- mitigation ---------------- */}

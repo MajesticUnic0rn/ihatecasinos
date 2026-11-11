@@ -76,12 +76,14 @@ Those finishes are not decoration: a finish **encodes the card's Hi-Lo count val
 Every quantitative claim on the site is checked against a closed form or a large Monte Carlo run:
 
 ```bash
-npm test     # 109 assertions
+npm test     # 147 assertions
 ```
 
-Covers wheel integrity, all 18 roulette bets across 3 rule sets, the Martingale closed form, gambler's ruin, 22 known basic-strategy spots (including `11 vs A → Hit` under S17, which is widely misremembered as Double), Hi-Lo balance, the craps 36-outcome table and odds ladder, and poker draw equities.
+Covers wheel integrity, all 18 roulette bets, the Martingale closed form, gambler's ruin, 22 known basic-strategy spots (including `11 vs A → Hit` under S17, which is widely misremembered as Double), Hi-Lo balance, the craps 36-outcome table and odds ladder, and poker draw equities.
 
 The load-bearing test: **all five betting progressions realise exactly the 5.26% house edge.** That's the site's central claim, and it fails loudly if the engine ever drifts.
+
+The blackjack page carries a counting simulator that deals real shoes card by card, so its true-count distribution is measured rather than assumed. Its claims are tested too: flat betting reproduces the −0.5% basic-strategy baseline, deeper penetration strictly raises the hourly rate, a wider spread strictly raises the edge, and more players cuts hands per hour without moving the edge per round. The headline finding — **at 50% penetration a 1–8 counter is still losing money** — is an assertion, not a flourish.
 
 The Martingale lab races all six systems at once on one config, which puts a second claim on screen — that the leftover spread between their realised edges is sampling noise. That's tested too: the spread narrows from ~0.75pp at 4,000 trials/system to ~0.12pp at 40,000, and every system lands within 0.3pp of theory.
 

@@ -102,7 +102,12 @@ export function Stat({
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
-  tone?: "ink" | "ember" | "lagoon" | "win" | "cream";
+  /**
+   * `win` is tuned for dark felt and only reaches 2.2:1 on white — use
+   * `good` on light panels. Two tones because one colour cannot clear
+   * 3:1 against both surfaces.
+   */
+  tone?: "ink" | "ember" | "lagoon" | "win" | "good" | "cream";
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
@@ -111,6 +116,7 @@ export function Stat({
     ember: "text-ember",
     lagoon: "text-lagoon",
     win: "text-win",
+    good: "text-[#1b7a53]",
     cream: "text-cream",
   }[tone];
 
