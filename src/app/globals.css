@@ -1,26 +1,278 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   THE HOUSE ALWAYS WINS — design system
+   Neo-brutalism (hybrid-state-of-mind) x Balatro felt.
+
+   Concept: the LESSON is bright, bordered and legible.
+   The CASINO is dark felt. Contrast carries the argument.
+   ============================================================ */
+
+@theme {
+  /* --- palette: lifted from hybrid-state-of-mind.webflow.io --- */
+  --color-ink: #031926; /* almost-black  */
+  --color-felt: #1c303c; /* green-black   */
+  --color-felt-deep: #0d1a22;
+  --color-cream: #f1f6f1; /* mint-cream    */
+  --color-paper: #ffffff;
+
+  --color-violet: #6e61ff; /* blue-violet — primary accent */
+  --color-violet-soft: #d1a4ff; /* soap-violet   */
+  --color-thistle: #dac3ff;
+  --color-ember: #ff611e; /* orange-red — the "loss" color */
+  --color-amber: #ffa352; /* soft-orange   */
+  --color-lagoon: #60aefe; /* lagoon-blue — the "edge" color */
+  --color-mint: #dcf7e7; /* azure-green   */
+  --color-slate: #68757d;
+  --color-gainsboro: #e6e8e9;
+
+  /* semantic: used consistently across every chart + table */
+  --color-player: #60aefe; /* player equity  — always blue   */
+  --color-house: #ff611e; /* house edge     — always ember  */
+  --color-push: #9aa3a8; /* push / neutral — always grey   */
+  --color-win: #4bc292; /* rare good news — always green  */
+
+  /* --- chart tokens ---
+     A diverging pair (gain ↔ loss) with a neutral grey midpoint, stepped
+     separately per surface. Both pairs pass all six checks of the palette
+     validator: lightness band, chroma floor, CVD separation (ΔE 27+ protan),
+     normal-vision floor, and 3:1 contrast against their own surface.
+     Do not swap these for the UI colors above — the UI steps are too light
+     on cream to carry a data mark. */
+  --color-chart-gain: #1f6fb8;
+  --color-chart-loss: #d4420f;
+  --color-chart-neutral: #5f6b73;
+  --color-chart-gain-dark: #3d93e8;
+  --color-chart-loss-dark: #f05a1c;
+  --color-chart-neutral-dark: #8b9aa3;
+
+  /* card suits */
+  --color-suit-red: #e5484d;
+  --color-suit-black: #031926;
+
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-num), ui-monospace, "SF Mono", monospace;
+
+  /* type scale: 56 / 48 / 36 / 24 / 18, straight from the reference */
+  --text-display: 4.5rem;
+  --text-display--line-height: 0.95;
+  --text-display--letter-spacing: -0.04em;
+  --text-h1: 3.5rem;
+  --text-h1--line-height: 1.02;
+  --text-h1--letter-spacing: -0.035em;
+  --text-h2: 3rem;
+  --text-h2--line-height: 1.05;
+  --text-h2--letter-spacing: -0.03em;
+  --text-h3: 2.25rem;
+  --text-h3--line-height: 1.1;
+  --text-h3--letter-spacing: -0.02em;
+  --text-h4: 1.5rem;
+  --text-h4--line-height: 1.2;
+  --text-h4--letter-spacing: -0.015em;
+  --text-h5: 1.125rem;
+  --text-h5--line-height: 1.4;
+
+  --radius-brut: 16px;
+  --radius-brut-lg: 24px;
+  --radius-pill: 50px;
+
+  --ease-out-brut: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+  }
+
+  * {
+    border-color: var(--color-ink);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+  }
+
+  /* every number on this site is tabular. comparing digits is the point. */
+  .tnum,
+  table,
+  code,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background: var(--color-violet);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-violet);
+    outline-offset: 3px;
+    border-radius: 4px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* ---- the core brutalist recipe: 2px black border + 6px hard shadow ---- */
+  .brut {
+    border: 2px solid var(--color-ink);
+    box-shadow: 6px 6px 0 0 var(--color-ink);
+    border-radius: var(--radius-brut);
+    background: var(--color-paper);
+  }
+
+  .brut-sm {
+    border: 2px solid var(--color-ink);
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+    border-radius: var(--radius-brut);
+    background: var(--color-paper);
+  }
+
+  .brut-flat {
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-brut);
+    background: var(--color-paper);
+  }
+
+  /* interactive lift: press it and the shadow collapses under it */
+  .brut-press {
+    transition:
+      transform 0.14s var(--ease-out-brut),
+      box-shadow 0.14s var(--ease-out-brut);
+  }
+  .brut-press:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 0 var(--color-ink);
+  }
+  .brut-press:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+  .brut-press:disabled {
+    opacity: 0.45;
+    transform: none;
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+    cursor: not-allowed;
+  }
+
+  /* dark variant — used inside felt panels, shadow goes light */
+  .brut-dark {
+    border: 2px solid var(--color-ink);
+    box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.55);
+    border-radius: var(--radius-brut);
+    background: var(--color-felt);
+    color: var(--color-cream);
+  }
+
+  /* ---- felt: the casino surface ---- */
+  .felt {
+    background:
+      radial-gradient(
+        ellipse 120% 80% at 50% -10%,
+        rgba(110, 97, 255, 0.16),
+        transparent 70%
+      ),
+      var(--color-felt-deep);
+    color: var(--color-cream);
+  }
+
+  .felt-panel {
+    background:
+      radial-gradient(
+        ellipse 100% 70% at 50% 0%,
+        rgba(96, 174, 254, 0.1),
+        transparent 65%
+      ),
+      var(--color-felt);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-brut-lg);
+    color: var(--color-cream);
+    box-shadow: 6px 6px 0 0 var(--color-ink);
+  }
+
+  /* ---- sticker badge (reference uses these everywhere) ---- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-pill);
+    padding: 0.3em 0.85em;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  /* ---- marquee ---- */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 38s linear infinite;
+  }
+  .marquee-host:hover .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+/* idle breathing on cards — Balatro's tells you a card is alive */
+@keyframes cardFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(0.5deg);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@layer utilities {
+  /* film grain — one SVG turbulence, no image request */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.32;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .text-stroke {
+    -webkit-text-stroke: 2px var(--color-ink);
+    paint-order: stroke fill;
+  }
 }
