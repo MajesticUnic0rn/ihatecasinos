@@ -59,7 +59,10 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-violet text-white",
   secondary: "bg-paper text-ink",
   danger: "bg-ember text-white",
-  ghost: "bg-transparent text-ink shadow-none hover:bg-ink/5",
+  // Ghost INHERITS its colour instead of pinning ink — it has to work on
+  // cream and on dark felt, and the only thing it can safely assume is
+  // that its parent already set a readable foreground.
+  ghost: "bg-transparent shadow-none opacity-75 hover:opacity-100 disabled:opacity-35",
 };
 
 export function Button({
@@ -71,7 +74,7 @@ export function Button({
     <button
       className={cx(
         variant === "ghost"
-          ? "rounded-[50px] border-2 border-ink px-5 py-2.5"
+          ? "rounded-[50px] border-2 border-current px-5 py-2.5"
           : "brut-sm brut-press rounded-[50px] px-5 py-2.5",
         "cursor-pointer text-sm font-bold tracking-wide uppercase",
         BUTTON_VARIANTS[variant],

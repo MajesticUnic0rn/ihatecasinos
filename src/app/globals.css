@@ -135,12 +135,21 @@
 }
 
 @layer components {
-  /* ---- the core brutalist recipe: 2px black border + 6px hard shadow ---- */
+  /* ---- the core brutalist recipe: 2px black border + 6px hard shadow ----
+
+     Each of these sets `color` alongside `background`. They must: a light
+     card dropped inside a .felt section would otherwise inherit the felt's
+     cream text and render cream-on-white. Setting a background without
+     pinning the matching foreground is how that happens.
+
+     These live in the components layer, so a utility like `text-white` on
+     the element still wins when a panel is deliberately dark. */
   .brut {
     border: 2px solid var(--color-ink);
     box-shadow: 6px 6px 0 0 var(--color-ink);
     border-radius: var(--radius-brut);
     background: var(--color-paper);
+    color: var(--color-ink);
   }
 
   .brut-sm {
@@ -148,10 +157,12 @@
     box-shadow: 3px 3px 0 0 var(--color-ink);
     border-radius: var(--radius-brut);
     background: var(--color-paper);
+    color: var(--color-ink);
   }
 
   .brut-flat {
     border: 2px solid var(--color-ink);
+    color: var(--color-ink);
     border-radius: var(--radius-brut);
     background: var(--color-paper);
   }
