@@ -6,12 +6,13 @@
  * large Monte Carlo run. Run with `npm test`.
  */
 import { analyzeMartingale, ruinSurvival, probAheadAfter, betStdDev, kellyFraction } from "../src/lib/stats";
-import { runMonteCarlo, DEFAULT_CONFIG } from "../src/lib/sim/engine";
+import { runMonteCarlo, binProfits, DEFAULT_CONFIG, HISTOGRAM_BINS } from "../src/lib/sim/engine";
 import { BET_TYPES, edgeFor, wheel, colorOf, RED_NUMBERS } from "../src/lib/games/roulette";
 import { basicStrategy, evaluate, HARD, SOFT, PAIRS, UPCARDS } from "../src/lib/games/blackjack";
 import { PASS_WIN, pass345Edge, passWithOdds, pMakePoint, WAYS, POINTS } from "../src/lib/games/craps";
 import { exactOuts, requiredEquity, modelRake, DEFAULT_RAKE } from "../src/lib/games/poker";
 import { parseHand, makeDeck, hiLoValue, RANKS } from "../src/lib/cards";
+import { STRATEGY_LIST } from "../src/lib/strategies";
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, detail = "") => {
@@ -80,6 +81,48 @@ for (const s of ["martingale", "dalembert", "fibonacci", "paroli", "grand-martin
   const r = runMonteCarlo({ ...DEFAULT_CONFIG, variant: "european", strategy: s, bankroll: 1e7,
     baseUnit: 1, tableMin: 1, tableMax: 256, maxBets: 2000, targetProfit: 0, seed: `t-${s}` }, 1500);
   near(`${s} realised edge ≈ 2.70%`, r.realizedEdge, 1 / 37, 0.004);
+}
+
+head("RACE — shared binning for small multiples");
+{
+  const sample = Float64Array.from([-10, -5, 0, 5, 10]);
+  const bins = binProfits(sample, -10, 10, 4);
+  ok("bin count honoured", bins.length === 4);
+  ok("every value is binned", bins.reduce((a, b) => a + b.count, 0) === sample.length);
+  ok("edges span the domain", bins[0].lo === -10 && Math.abs(bins[3].hi - 10) < 1e-9);
+  ok("top value clamps into the last bin", bins[3].count >= 1);
+}
+{
+  // The race re-bins every system onto ONE set of edges. If that ever
+  // regresses, the small multiples silently stop being comparable.
+  const runs = STRATEGY_LIST.map((st) =>
+    runMonteCarlo({ ...DEFAULT_CONFIG, strategy: st.id, seed: "race" }, 400, undefined, true));
+  const lo = Math.min(...runs.map((r) => r.worstProfit));
+  const hi = Math.max(...runs.map((r) => r.bestProfit));
+  const rebinned = runs.map((r) => binProfits(r.profits!, lo, hi));
+  const edges = rebinned.map((h) => h.map((b) => b.lo.toFixed(6)).join(","));
+  ok("all six systems share identical bin edges", new Set(edges).size === 1);
+  ok(`each has ${HISTOGRAM_BINS} bins`, rebinned.every((h) => h.length === HISTOGRAM_BINS));
+  ok("re-binning preserves every trial",
+    rebinned.every((h, i) => h.reduce((a, b) => a + b.count, 0) === runs[i].profits!.length));
+  ok("keepProfits=false leaves no sample attached",
+    runMonteCarlo({ ...DEFAULT_CONFIG, seed: "x" }, 50).profits === undefined);
+}
+
+head("RACE — the spread across systems is sampling noise, and shrinks");
+{
+  const theory = edgeFor(BET_TYPES[0], DEFAULT_CONFIG.variant).houseEdge;
+  const widthAt = (trials: number) => {
+    const es = STRATEGY_LIST.map((st) =>
+      runMonteCarlo({ ...DEFAULT_CONFIG, strategy: st.id, seed: "conv" }, trials).realizedEdge);
+    return { width: Math.max(...es) - Math.min(...es), maxErr: Math.max(...es.map((e) => Math.abs(e - theory))) };
+  };
+  const small = widthAt(4_000);
+  const large = widthAt(40_000);
+  ok(`spread narrows with trials (${(small.width * 100).toFixed(2)}pp -> ${(large.width * 100).toFixed(2)}pp)`,
+    large.width < small.width);
+  ok(`every system lands within 0.3pp of theory at 40k (max err ${(large.maxErr * 100).toFixed(3)}pp)`,
+    large.maxErr < 0.003);
 }
 
 /* ---------------- blackjack ---------------- */

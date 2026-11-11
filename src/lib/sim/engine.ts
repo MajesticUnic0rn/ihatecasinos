@@ -206,12 +206,44 @@ export interface MonteCarloResult {
   /** p5 / p25 / p50 / p75 / p95 of profit. */
   percentiles: Record<string, number>;
   histogram: { bin: number; lo: number; hi: number; count: number }[];
+  /** Raw sample, present only when `keepProfits` was requested. */
+  profits?: Float64Array;
+}
+
+export const HISTOGRAM_BINS = 41;
+
+/** Bin a profit sample over an explicit domain. */
+export function binProfits(
+  profits: Float64Array,
+  lo: number,
+  hi: number,
+  bins = HISTOGRAM_BINS,
+): MonteCarloResult["histogram"] {
+  const width = (hi - lo) / bins || 1;
+  const counts = new Array(bins).fill(0);
+  for (let i = 0; i < profits.length; i++) {
+    const b = Math.min(bins - 1, Math.max(0, Math.floor((profits[i] - lo) / width)));
+    counts[b]++;
+  }
+  return counts.map((count, bin) => ({
+    bin,
+    lo: lo + bin * width,
+    hi: lo + (bin + 1) * width,
+    count,
+  }));
 }
 
 export function runMonteCarlo(
   config: SessionConfig,
   trials: number,
   onProgress?: (done: number, total: number) => void,
+  /**
+   * Keep the raw profit sample on the result. Needed only when several
+   * runs have to be re-binned onto SHARED bin edges afterwards — small
+   * multiples drawn on per-panel bins are not a comparison.
+   * The caller is expected to drop this before posting across a thread.
+   */
+  keepProfits = false,
 ): MonteCarloResult {
   const outcomes: Record<SessionOutcome, number> = {
     bust: 0,
@@ -258,16 +290,6 @@ export function runMonteCarlo(
   const worst = sorted[0];
   const best = sorted[trials - 1];
 
-  // Histogram over the observed range, 41 bins so zero lands on a boundary.
-  const BINS = 41;
-  const lo = worst;
-  const hi = best;
-  const width = (hi - lo) / BINS || 1;
-  const counts = new Array(BINS).fill(0);
-  for (let t = 0; t < trials; t++) {
-    const b = Math.min(BINS - 1, Math.max(0, Math.floor((profits[t] - lo) / width)));
-    counts[b]++;
-  }
 
   return {
     trials,
@@ -289,12 +311,8 @@ export function runMonteCarlo(
       p75: q(0.75),
       p95: q(0.95),
     },
-    histogram: counts.map((count, bin) => ({
-      bin,
-      lo: lo + bin * width,
-      hi: lo + (bin + 1) * width,
-      count,
-    })),
+    histogram: binProfits(profits, worst, best),
+    profits: keepProfits ? profits : undefined,
   };
 }
 

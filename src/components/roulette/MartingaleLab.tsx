@@ -20,7 +20,7 @@ import {
   Stat,
   cx,
 } from "@/components/ui";
-import { BankrollChart, ProfitHistogram } from "@/components/viz/charts";
+import { BankrollChart, MiniHistogram, ProfitHistogram } from "@/components/viz/charts";
 
 const OUTCOME_COPY: Record<SessionOutcome, { label: string; tone: "ember" | "mint" | "amber" }> = {
   bust: { label: "Broke", tone: "ember" },
@@ -30,6 +30,13 @@ const OUTCOME_COPY: Record<SessionOutcome, { label: string; tone: "ember" | "min
 };
 
 const TRIAL_OPTIONS = [1_000, 10_000, 100_000];
+// Six systems in one pass. Measured on the default config: 6x10k runs in
+// ~0.4s, 6x50k in ~2s, 6x200k in ~8s. The tiers matter for more than
+// speed — at low trial counts the sampling error on the realised edge is
+// wide enough (~2pp at 500/system) to look like a real difference between
+// systems, which would undercut the entire point of the comparison.
+const RACE_TRIALS = [10_000, 50_000, 200_000];
+const ALL_IDS = STRATEGY_LIST.map((s) => s.id);
 
 export function MartingaleLab() {
   const [config, setConfig] = React.useState<SessionConfig>({
@@ -40,8 +47,60 @@ export function MartingaleLab() {
   const [step, setStep] = React.useState(0);
   const [playing, setPlaying] = React.useState(false);
   const [trials, setTrials] = React.useState(10_000);
+  const [raceAll, setRaceAll] = React.useState(true);
 
   const mc = useMonteCarlo();
+
+  // Racing six systems costs six times the work, so the ceiling drops.
+  const trialOptions = raceAll ? RACE_TRIALS : TRIAL_OPTIONS;
+
+  // Clamped here rather than in an effect: the trial count is only ever
+  // out of range as a consequence of THIS click.
+  const setMode = (all: boolean) => {
+    setRaceAll(all);
+    const opts = all ? RACE_TRIALS : TRIAL_OPTIONS;
+    if (!opts.includes(trials)) setTrials(opts[1]);
+  };
+
+  const race = mc.results && mc.results.length > 1 ? mc.results : null;
+  const isRace = race !== null;
+
+  /**
+   * Small multiples only compare honestly on shared axes, so the domain
+   * and the tallest bar are computed across ALL panels, not per panel.
+   */
+  const raceDomain = React.useMemo<[number, number]>(() => {
+    if (!race) return [0, 1];
+    return [
+      Math.min(...race.map((r) => r.result.worstProfit)),
+      Math.max(...race.map((r) => r.result.bestProfit)),
+    ];
+  }, [race]);
+
+  const raceMaxCount = React.useMemo(() => {
+    if (!race) return 1;
+    return Math.max(
+      1,
+      ...race.flatMap((r) => r.result.histogram.map((h) => h.count)),
+    );
+  }, [race]);
+
+  const raceSpread = React.useMemo(() => {
+    if (!race) {
+      return { minAhead: 0, maxAhead: 0, minEdge: 0, maxEdge: 0, bestWorst: 0, worstWorst: 0 };
+    }
+    const ahead = race.map((r) => r.result.pAhead);
+    const edges = race.map((r) => r.result.realizedEdge);
+    const worst = race.map((r) => r.result.worstProfit);
+    return {
+      minAhead: Math.min(...ahead),
+      maxAhead: Math.max(...ahead),
+      minEdge: Math.min(...edges),
+      maxEdge: Math.max(...edges),
+      bestWorst: Math.max(...worst),
+      worstWorst: Math.min(...worst),
+    };
+  }, [race]);
 
   const set = <K extends keyof SessionConfig>(k: K, v: SessionConfig[K]) =>
     setConfig((c) => ({ ...c, [k]: v }));
@@ -340,7 +399,7 @@ export function MartingaleLab() {
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
             <Badge tone="ember" className="mb-2">
-              Step 2 — now do it a hundred thousand times
+              Step 2 — now do it tens of thousands of times
             </Badge>
             <h3 className="text-h4 max-w-xl font-bold text-balance">
               One session is an anecdote. This is the distribution the anecdote
@@ -351,14 +410,16 @@ export function MartingaleLab() {
             <Segmented
               value={String(trials)}
               onChange={(v) => setTrials(Number(v))}
-              options={TRIAL_OPTIONS.map((t) => ({
+              options={trialOptions.map((t) => ({
                 value: String(t),
                 label: t.toLocaleString(),
               }))}
             />
             <Button
               variant="danger"
-              onClick={() => mc.run(config, trials)}
+              onClick={() =>
+                mc.run(config, trials, raceAll ? ALL_IDS : undefined)
+              }
               disabled={mc.running}
             >
               {mc.running ? `${Math.round(mc.progress * 100)}%` : "Run"}
@@ -366,20 +427,149 @@ export function MartingaleLab() {
           </div>
         </div>
 
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <Segmented
+            label="What to simulate"
+            value={raceAll ? "all" : "one"}
+            onChange={(v) => setMode(v === "all")}
+            options={[
+              { value: "all", label: "All six systems" },
+              { value: "one", label: `Just ${strategy.name}` },
+            ]}
+          />
+          <span className="text-xs leading-snug opacity-55">
+            {raceAll
+              ? `${STRATEGY_LIST.length} × ${trials.toLocaleString()} = ${(STRATEGY_LIST.length * trials).toLocaleString()} sessions, same bankroll, same table limit, same seed.`
+              : "One system at a time, if you want to study its shape on its own."}
+          </span>
+        </div>
+
         {mc.running && (
-          <div className="h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-gainsboro">
-            <div
-              className="h-full bg-violet transition-[width] duration-150"
-              style={{ width: `${mc.progress * 100}%` }}
-            />
-          </div>
+          <>
+            <div className="h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-gainsboro">
+              <div
+                className="h-full bg-violet transition-[width] duration-150"
+                style={{ width: `${mc.progress * 100}%` }}
+              />
+            </div>
+            {mc.label && (
+              <p className="mt-2 text-xs opacity-55">Simulating {mc.label}…</p>
+            )}
+          </>
         )}
 
         {mc.error && (
           <p className="brut-flat bg-ember/15 p-4 text-sm">{mc.error}</p>
         )}
 
-        {mc.result && !mc.running && (
+        {/* ---- the race ---- */}
+        {isRace && !mc.running && (
+          <>
+            <div className="brut-flat mb-7 overflow-x-auto">
+              <table className="w-full min-w-[46rem] border-collapse text-sm">
+                <caption className="sr-only">
+                  Every betting system compared on identical settings
+                </caption>
+                <thead>
+                  <tr className="border-b-2 border-ink text-left">
+                    <th className="p-3 font-bold">System</th>
+                    <th className="p-3 font-bold">Shape of {trials.toLocaleString()} sessions</th>
+                    <th className="p-3 text-right font-bold">Finished ahead</th>
+                    <th className="p-3 text-right font-bold">Went broke</th>
+                    <th className="p-3 text-right font-bold">Worst</th>
+                    <th className="p-3 text-right font-bold">Realised edge</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {race.map(({ strategy: id, result }) => {
+                    const s = STRATEGIES[id];
+                    return (
+                      <tr
+                        key={id}
+                        className={cx(
+                          "border-b border-ink/15 align-middle last:border-0",
+                          id === config.strategy && "bg-thistle/35",
+                        )}
+                      >
+                        <td className="p-3">
+                          <span className="block font-bold">{s.name}</span>
+                          <span className="text-xs opacity-55">{s.tagline}</span>
+                        </td>
+                        <td className="w-[15rem] p-3">
+                          <MiniHistogram
+                            bins={result.histogram}
+                            domain={raceDomain}
+                            maxCount={raceMaxCount}
+                          />
+                        </td>
+                        <td className="tnum p-3 text-right font-mono">
+                          {pct(result.pAhead, 1)}
+                        </td>
+                        <td className="tnum p-3 text-right font-mono text-ember">
+                          {pct(result.pBust, 1)}
+                        </td>
+                        <td className="tnum p-3 text-right font-mono text-ember">
+                          {money(result.worstProfit)}
+                        </td>
+                        <td className="tnum p-3 text-right font-mono font-bold text-ember">
+                          {pct(result.realizedEdge, 2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="border-t-2 border-ink px-3 py-2.5 text-xs opacity-60">
+                All six panels share one profit axis, running{" "}
+                <strong className="tnum">{money(raceDomain[0])}</strong> to{" "}
+                <strong className="tnum">{money(raceDomain[1])}</strong>, one
+                set of bin edges, and one height scale — so the silhouettes are
+                directly comparable. The dashed line is break-even.
+              </p>
+            </div>
+
+            <div className="brut-flat bg-thistle p-6">
+              <Badge tone="ink" className="mb-3">
+                Read the last column
+              </Badge>
+              <p className="leading-relaxed">
+                Look across the row of silhouettes first: a wall on the right,
+                a long left tail, a lump in the middle. Six genuinely different
+                experiences — win rates from{" "}
+                <strong className="tnum">{pct(raceSpread.minAhead, 0)}</strong>{" "}
+                to <strong className="tnum">{pct(raceSpread.maxAhead, 0)}</strong>
+                , worst sessions from{" "}
+                <strong className="tnum">{money(raceSpread.bestWorst)}</strong>{" "}
+                to <strong className="tnum">{money(raceSpread.worstWorst)}</strong>.
+              </p>
+              <p className="mt-3 leading-relaxed">
+                Now read the last column. Every system realises the same{" "}
+                <strong className="tnum">
+                  {pct(raceSpread.minEdge, 2)}–{pct(raceSpread.maxEdge, 2)}
+                </strong>{" "}
+                against a theoretical{" "}
+                <strong className="tnum">{pct(edge.houseEdge, 2)}</strong>. The
+                progressions moved the bars around. The mean stayed exactly
+                where the wheel put it.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed opacity-75">
+                That last column still has{" "}
+                <strong className="tnum">
+                  {((raceSpread.maxEdge - raceSpread.minEdge) * 100).toFixed(2)}
+                  pp
+                </strong>{" "}
+                of spread in it, and it would be fair to ask whether the lowest
+                one is genuinely winning. It is sampling error, and it collapses
+                like √n — quadruple the trials and it roughly halves. Push the
+                count to {RACE_TRIALS[2].toLocaleString()} and the six systems
+                agree to within about a tenth of a point.
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* ---- a single system ---- */}
+        {!isRace && mc.result && !mc.running && (
           <>
             <div className="mb-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
@@ -436,10 +626,13 @@ export function MartingaleLab() {
           </>
         )}
 
-        {!mc.result && !mc.running && (
+        {!mc.results && !mc.running && (
           <p className="py-10 text-center text-sm opacity-55">
-            Nothing simulated yet. {trials.toLocaleString()} sessions takes a
-            second or two, off the main thread.
+            Nothing simulated yet.{" "}
+            {raceAll
+              ? `All six systems over ${trials.toLocaleString()} sessions each`
+              : `${trials.toLocaleString()} sessions`}{" "}
+            takes a second or two, off the main thread.
           </p>
         )}
       </div>

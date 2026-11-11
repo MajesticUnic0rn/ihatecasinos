@@ -1,91 +1,106 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MonteCarloResult, SessionConfig } from "./engine";
-import type { SimResponse } from "./sim.worker";
+import type { SessionConfig } from "./engine";
+import type { SimResponse, StrategyRun } from "./sim.worker";
+import type { StrategyId } from "../strategies";
 
 interface State {
   running: boolean;
   progress: number;
-  result: MonteCarloResult | null;
+  /** Which strategy the worker is currently chewing through. */
+  label: string | null;
+  results: StrategyRun[] | null;
   error: string | null;
 }
+
+const IDLE: State = {
+  running: false,
+  progress: 0,
+  label: null,
+  results: null,
+  error: null,
+};
 
 export function useMonteCarlo() {
   const workerRef = useRef<Worker | null>(null);
   const idRef = useRef(0);
-  const [state, setState] = useState<State>({
-    running: false,
-    progress: 0,
-    result: null,
-    error: null,
-  });
+  const [state, setState] = useState<State>(IDLE);
 
-  useEffect(() => {
-    const worker = new Worker(new URL("./sim.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
+  // One handler shape, reused when we hard-restart the worker to cancel.
+  const attach = useCallback((worker: Worker) => {
     worker.onmessage = (e: MessageEvent<SimResponse>) => {
       const msg = e.data;
       // Ignore stragglers from a superseded run.
       if (msg.id !== idRef.current) return;
 
       if (msg.type === "progress") {
-        setState((s) => ({ ...s, progress: msg.done / msg.total }));
+        setState((s) => ({
+          ...s,
+          progress: msg.done / msg.total,
+          label: msg.label,
+        }));
       } else if (msg.type === "result") {
         setState({
           running: false,
           progress: 1,
-          result: msg.result,
+          label: null,
+          results: msg.results,
           error: null,
         });
       } else {
-        setState((s) => ({
-          ...s,
-          running: false,
-          error: msg.message,
-        }));
+        setState((s) => ({ ...s, running: false, error: msg.message }));
       }
     };
+    return worker;
+  }, []);
 
+  useEffect(() => {
+    const worker = attach(
+      new Worker(new URL("./sim.worker.ts", import.meta.url), {
+        type: "module",
+      }),
+    );
     workerRef.current = worker;
     return () => {
       worker.terminate();
       workerRef.current = null;
     };
-  }, []);
+  }, [attach]);
 
-  const run = useCallback((config: SessionConfig, trials: number) => {
-    const worker = workerRef.current;
-    if (!worker) return;
-    const id = ++idRef.current;
-    setState({ running: true, progress: 0, result: null, error: null });
-    worker.postMessage({ id, config, trials });
-  }, []);
+  /**
+   * Pass `strategies` to race several systems on the same config in one
+   * pass. Omit it to run whatever is already on the config.
+   */
+  const run = useCallback(
+    (config: SessionConfig, trials: number, strategies?: StrategyId[]) => {
+      const worker = workerRef.current;
+      if (!worker) return;
+      const id = ++idRef.current;
+      setState({ ...IDLE, running: true });
+      worker.postMessage({ id, config, trials, strategies });
+    },
+    [],
+  );
 
   const cancel = useCallback(() => {
     // Bump the id so in-flight results are discarded, then hard-restart
     // the worker — a synchronous Monte Carlo loop cannot be interrupted.
     idRef.current++;
     workerRef.current?.terminate();
-    const worker = new Worker(new URL("./sim.worker.ts", import.meta.url), {
-      type: "module",
-    });
-    worker.onmessage = (e: MessageEvent<SimResponse>) => {
-      const msg = e.data;
-      if (msg.id !== idRef.current) return;
-      if (msg.type === "progress") {
-        setState((s) => ({ ...s, progress: msg.done / msg.total }));
-      } else if (msg.type === "result") {
-        setState({ running: false, progress: 1, result: msg.result, error: null });
-      } else {
-        setState((s) => ({ ...s, running: false, error: msg.message }));
-      }
-    };
-    workerRef.current = worker;
-    setState((s) => ({ ...s, running: false, progress: 0 }));
-  }, []);
+    workerRef.current = attach(
+      new Worker(new URL("./sim.worker.ts", import.meta.url), {
+        type: "module",
+      }),
+    );
+    setState(IDLE);
+  }, [attach]);
 
-  return { ...state, run, cancel };
+  return {
+    ...state,
+    /** Convenience for the single-strategy case. */
+    result: state.results?.[0]?.result ?? null,
+    run,
+    cancel,
+  };
 }

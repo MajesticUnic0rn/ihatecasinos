@@ -703,6 +703,89 @@ export function ProbAheadCurve({
 }
 
 /* ------------------------------------------------------------------ */
+/* 2b. Small-multiple histogram — for racing several systems at once    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A stripped-down ProfitHistogram for small multiples.
+ *
+ * Shared axes are the whole point: every panel is drawn on the SAME
+ * profit range and the SAME count scale, so the differing silhouettes
+ * are a real comparison instead of six charts each autoscaled to
+ * flatter itself.
+ */
+export function MiniHistogram({
+  bins,
+  domain,
+  maxCount,
+  dark = false,
+  height = 86,
+}: {
+  bins: { lo: number; hi: number; count: number }[];
+  /** Shared [min, max] profit across every panel. */
+  domain: [number, number];
+  /** Shared tallest bar across every panel. */
+  maxCount: number;
+  dark?: boolean;
+  height?: number;
+}) {
+  const t = theme(dark);
+  const W = 260;
+  const [lo, hi] = domain;
+  const span = hi - lo || 1;
+  const x = (v: number) => r2(((v - lo) / span) * W);
+  const zero = x(0);
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${height}`}
+      width="100%"
+      height={height}
+      preserveAspectRatio="none"
+      aria-hidden
+      className="block"
+    >
+      {bins.map((b, i) => {
+        if (!b.count) return null;
+        const bx = x(b.lo);
+        const bw = Math.max(2.5, x(b.hi) - bx - 1);
+        const h = r2((b.count / maxCount) * (height - 10));
+        return (
+          <rect
+            key={i}
+            x={bx}
+            y={height - h}
+            width={bw}
+            height={h}
+            rx={1.5}
+            fill={b.hi > 0 ? t.gain : t.loss}
+          />
+        );
+      })}
+      <line
+        x1={0}
+        x2={W}
+        y1={height - 0.5}
+        y2={height - 0.5}
+        stroke={t.grid}
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+      />
+      <line
+        x1={zero}
+        x2={zero}
+        y1={0}
+        y2={height}
+        stroke={t.neutral}
+        strokeWidth={1.5}
+        strokeDasharray="3 3"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* 5. Observed vs expected — one bar series + a reference tick          */
 /* ------------------------------------------------------------------ */
 
