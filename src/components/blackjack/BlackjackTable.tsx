@@ -9,18 +9,14 @@ import {
   ACTION_LABEL,
   type Action,
 } from "@/lib/games/blackjack";
-import {
-  finishForCount,
-  hiLoValue,
-  makeDeck,
-  type Card,
-} from "@/lib/cards";
+import { makeDeck, type Card } from "@/lib/cards";
 import { makeRng, randomSeed, shuffle, type Rng } from "@/lib/rng";
 import { money, pct } from "@/lib/stats";
 import { Badge, Button, Segmented, Stat, cx } from "@/components/ui";
 
 const DECKS = 6;
-const BET = 25;
+const START = 1000;
+const BET_SIZES = [10, 25, 50, 100] as const;
 
 interface PlayerHand {
   cards: Card[];
@@ -50,10 +46,9 @@ export function BlackjackTable() {
   const [dealer, setDealer] = React.useState<Card[]>([]);
   const [active, setActive] = React.useState(0);
   const [phase, setPhase] = React.useState<Phase>("idle");
-  const [bankroll, setBankroll] = React.useState(1000);
-  const [count, setCount] = React.useState(0);
-  const [seen, setSeen] = React.useState(0);
-  const [showCount, setShowCount] = React.useState(false);
+  const [bankroll, setBankroll] = React.useState(START);
+  const [bet, setBet] = React.useState<number>(25);
+  const [hint, setHint] = React.useState(false);
   const [payout, setPayout] = React.useState<"3:2" | "6:5">("3:2");
   const [coach, setCoach] = React.useState({ right: 0, total: 0 });
   const [feedback, setFeedback] = React.useState<{
@@ -62,12 +57,6 @@ export function BlackjackTable() {
     correct: Action;
   } | null>(null);
   const [handsPlayed, setHandsPlayed] = React.useState(0);
-  const [netStart] = React.useState(1000);
-
-  const track = (cards: Card[]) => {
-    setCount((c) => c + cards.reduce((a, b) => a + hiLoValue(b.rank), 0));
-    setSeen((s) => s + cards.length);
-  };
 
   const draw = (src: Card[], n: number): [Card[], Card[]] => {
     const taken = src.slice(0, n);
@@ -75,21 +64,20 @@ export function BlackjackTable() {
   };
 
   const deal = () => {
+    if (bankroll < bet) return;
+    setHint(false);
     let s = shoe;
     // Reshuffle at 25% penetration, like a real shoe.
     if (s.length < DECKS * 52 * 0.25) {
       s = freshShoe(getRng());
-      setCount(0);
-      setSeen(0);
     }
     const [p, s1] = draw(s, 2);
     const [d, s2] = draw(s1, 2);
-    track([...p, d[0]]); // the hole card isn't visible yet
 
     setShoe(s2);
     setDealer(d);
     setHands([
-      { cards: p, bet: BET, done: false, doubled: false, surrendered: false, fromSplit: false },
+      { cards: p, bet, done: false, doubled: false, surrendered: false, fromSplit: false },
     ]);
     setActive(0);
     setFeedback(null);
@@ -99,12 +87,11 @@ export function BlackjackTable() {
     const pv = evaluate(p);
     const dv = evaluate(d);
     if (pv.blackjack || dv.blackjack) {
-      track([d[1]]); // hole card turns over, so it enters the count now
       setTimeout(
         () =>
           finish(
             d,
-            [{ cards: p, bet: BET, done: true, doubled: false, surrendered: false, fromSplit: false }],
+            [{ cards: p, bet, done: true, doubled: false, surrendered: false, fromSplit: false }],
             s2,
             true,
           ),
@@ -116,12 +103,18 @@ export function BlackjackTable() {
   const currentHand = hands[active];
   const dealerUp = dealer[0];
 
-  const canDouble = !!currentHand && currentHand.cards.length === 2 && bankroll >= currentHand.bet;
+  // The bankroll still includes every bet already riding on this round,
+  // so doubling or splitting must be paid out of what is NOT committed.
+  // Checking against the raw bankroll let a player double their last bet
+  // and finish below zero.
+  const committed = hands.reduce((a, h) => a + h.bet, 0);
+  const free = bankroll - committed;
+  const canDouble = !!currentHand && currentHand.cards.length === 2 && free >= currentHand.bet;
   const canSplit =
     !!currentHand &&
     currentHand.cards.length === 2 &&
     hands.length < 4 &&
-    bankroll >= currentHand.bet &&
+    free >= currentHand.bet &&
     (currentHand.cards[0].rank === currentHand.cards[1].rank ||
       (evaluate([currentHand.cards[0]]).total === 10 &&
         evaluate([currentHand.cards[1]]).total === 10));
@@ -155,6 +148,7 @@ export function BlackjackTable() {
 
   const act = (a: Action) => {
     if (phase !== "player" || !currentHand) return;
+    setHint(false);
     judge(a);
     let s = shoe;
     const next = hands.map((h) => ({ ...h }));
@@ -163,7 +157,6 @@ export function BlackjackTable() {
     if (a === "H" || a === "D") {
       const [c, rest] = draw(s, 1);
       s = rest;
-      track(c);
       h.cards = [...h.cards, ...c];
       if (a === "D") {
         h.bet *= 2;
@@ -180,7 +173,6 @@ export function BlackjackTable() {
       const [c1, r1] = draw(s, 1);
       const [c2, r2] = draw(r1, 1);
       s = r2;
-      track([...c1, ...c2]);
       const left: PlayerHand = { ...h, cards: [h.cards[0], ...c1], fromSplit: true };
       const right: PlayerHand = { ...h, cards: [h.cards[1], ...c2], fromSplit: true };
       next.splice(active, 1, left, right);
@@ -197,7 +189,6 @@ export function BlackjackTable() {
     );
     const dcards = [...d];
     let rest = s;
-    track([d[1]]); // hole card revealed
 
     if (anyLive) {
       // Dealer stands on ALL 17s, soft included — the S17 rule the whole
@@ -207,7 +198,6 @@ export function BlackjackTable() {
         if (v.total >= 17) break;
         const [c, r] = draw(rest, 1);
         rest = r;
-        track(c);
         dcards.push(...c);
       }
     }
@@ -265,7 +255,6 @@ export function BlackjackTable() {
     if (immediate) setShoe(s);
   };
 
-  const trueCount = seen > 0 ? count / Math.max(0.5, (DECKS * 52 - seen) / 52) : 0;
   const dealerHidden = phase === "player";
   const accuracy = coach.total > 0 ? coach.right / coach.total : null;
 
@@ -306,7 +295,6 @@ export function BlackjackTable() {
                 width={78}
                 index={i}
                 faceDown={dealerHidden && i === 1}
-                finish={showCount && !(dealerHidden && i === 1) ? finishForCount(c.rank) : "none"}
               />
             ))}
           </div>
@@ -348,7 +336,6 @@ export function BlackjackTable() {
                         card={c}
                         width={78}
                         index={i}
-                        finish={showCount ? finishForCount(c.rank) : "none"}
                       />
                     ))}
                   </div>
@@ -357,8 +344,8 @@ export function BlackjackTable() {
             })}
             {hands.length === 0 && (
               <p className="py-10 text-sm text-cream/45">
-                Press deal. The coach grades every decision against the
-                strategy chart further down the page.
+                Pick a bet and press Deal. Stuck on a hand? Press “What should
+                I do?” for the textbook answer.
               </p>
             )}
           </div>
@@ -385,12 +372,44 @@ export function BlackjackTable() {
                   Surrender
                 </Button>
               </>
+            ) : bankroll < BET_SIZES[0] ? (
+              <Button
+                onClick={() => {
+                  setBankroll(START);
+                  setHands([]);
+                  setDealer([]);
+                  setPhase("idle");
+                }}
+              >
+                Out of money — start over with $1,000
+              </Button>
             ) : (
-              <Button onClick={deal} disabled={phase === "dealer"}>
-                {phase === "idle" ? `Deal — ${money(BET)}` : "Next hand"}
+              <>
+                <Button onClick={deal} disabled={phase === "dealer" || bankroll < bet}>
+                  {phase === "idle" ? `Deal — bet ${money(bet)}` : `Next hand — ${money(bet)}`}
+                </Button>
+                <Segmented
+                  dark
+                  value={String(bet)}
+                  onChange={(v) => setBet(Number(v))}
+                  options={BET_SIZES.filter((b) => b <= bankroll).map((b) => ({
+                    value: String(b),
+                    label: `$${b}`,
+                  }))}
+                />
+              </>
+            )}
+            {phase === "player" && (
+              <Button variant="ghost" onClick={() => setHint((h) => !h)}>
+                {hint ? "Hide hint" : "What should I do?"}
               </Button>
             )}
           </div>
+          {hint && phase === "player" && correctAction && (
+            <p className="-mt-1 text-sm text-amber">
+              The chart says: <strong>{ACTION_FULL[correctAction]}</strong>.
+            </p>
+          )}
 
           {/* the coach */}
           <div
@@ -441,15 +460,6 @@ export function BlackjackTable() {
                 { value: "6:5", label: "6:5" },
               ]}
             />
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold tracking-wide text-cream/70 uppercase">
-              <input
-                type="checkbox"
-                checked={showCount}
-                onChange={(e) => setShowCount(e.target.checked)}
-                className="h-4 w-4 accent-[#6e61ff]"
-              />
-              Show Hi-Lo count
-            </label>
           </div>
         </div>
 
@@ -457,7 +467,7 @@ export function BlackjackTable() {
           <Stat
             label="Bankroll"
             value={money(bankroll)}
-            tone={bankroll >= netStart ? "win" : "ember"}
+            tone={bankroll >= START ? "win" : "ember"}
             size="sm"
             sub={`${handsPlayed} hands`}
           />
@@ -468,24 +478,6 @@ export function BlackjackTable() {
             size="sm"
             sub={`${coach.right}/${coach.total} correct`}
           />
-          {showCount && (
-            <>
-              <Stat
-                label="Running count"
-                value={count > 0 ? `+${count}` : count}
-                tone={count > 0 ? "win" : "cream"}
-                size="sm"
-                sub="foil +1 · holo −1"
-              />
-              <Stat
-                label="True count"
-                value={trueCount.toFixed(1)}
-                tone={trueCount >= 2 ? "win" : "cream"}
-                size="sm"
-                sub="running ÷ decks left"
-              />
-            </>
-          )}
         </div>
       </div>
     </div>

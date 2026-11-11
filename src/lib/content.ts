@@ -8,6 +8,8 @@ export const GAMES = [
     href: "/roulette",
     glyph: "🎡",
     title: "Roulette",
+    rules: "Bet on where the ball lands — a number, a color, or odd and even.",
+    keeps: "5.3¢",
     lesson: "Expected value",
     tone: "ember" as const,
     blurb:
@@ -19,6 +21,8 @@ export const GAMES = [
     href: "/blackjack",
     glyph: "🂡",
     title: "Blackjack",
+    rules: "Get closer to 21 than the dealer without going over.",
+    keeps: "0.5–2¢",
     lesson: "Conditional probability",
     tone: "lagoon" as const,
     blurb:
@@ -30,6 +34,8 @@ export const GAMES = [
     href: "/craps",
     glyph: "🎲",
     title: "Craps",
+    rules: "Bet on the dice. Roll your number again before a 7.",
+    keeps: "1.4–17¢",
     lesson: "Vig and free odds",
     tone: "amber" as const,
     blurb:
@@ -41,6 +47,8 @@ export const GAMES = [
     href: "/poker",
     glyph: "♠",
     title: "Poker",
+    rules: "Beat the other players with the best five-card hand.",
+    keeps: "a slice of every pot",
     lesson: "The rake",
     tone: "violet" as const,
     blurb:
@@ -55,7 +63,7 @@ export const LESSONS = [
     id: "ev",
     title: "Expected value and the house edge",
     via: "Roulette",
-    href: "/roulette#wheel",
+    href: "/roulette#play",
     blurb:
       "A payout computed from the wrong denominator. Derive 5.26% yourself and watch it stay 5.26% no matter which bet you pick.",
   },

@@ -7,7 +7,9 @@
  */
 import { analyzeMartingale, ruinSurvival, probAheadAfter, betStdDev, kellyFraction } from "../src/lib/stats";
 import { runMonteCarlo, binProfits, DEFAULT_CONFIG, HISTOGRAM_BINS } from "../src/lib/sim/engine";
-import { BET_TYPES, edgeFor, WHEEL, POCKETS, colorOf, RED_NUMBERS } from "../src/lib/games/roulette";
+import { BET_TYPES, edgeFor, WHEEL, POCKETS, colorOf, RED_NUMBERS, tableBet, settleTable, LAYOUT_ROWS } from "../src/lib/games/roulette";
+import { resolveRoll, canBet, canRemove, onTable, SPOTS, type Spot, type TableState } from "../src/lib/games/crapsTable";
+import { evaluate as pokerEval, equity, SCENARIOS, scenarioCards, requiredShare, callEv, RANKING_EXAMPLES } from "../src/lib/games/holdem";
 import { basicStrategy, evaluate, HARD, SOFT, PAIRS, UPCARDS } from "../src/lib/games/blackjack";
 import { PASS_WIN, pass345Edge, passWithOdds, pMakePoint, WAYS, POINTS } from "../src/lib/games/craps";
 import { exactOuts, requiredEquity, modelRake, DEFAULT_RAKE } from "../src/lib/games/poker";
@@ -324,6 +326,149 @@ near("pot odds: call 30 into 100 needs 23.08%", requiredEquity(100, 30), 30 / 13
 const rake = modelRake(DEFAULT_RAKE);
 ok("live $1/$2 rake lands near 10 BB/100", rake.bbPer100 > 8 && rake.bbPer100 < 12, `got ${rake.bbPer100.toFixed(1)}`);
 ok("rake cap binds on a big pot", modelRake({ ...DEFAULT_RAKE, avgPot: 400 }).rakePerPot === DEFAULT_RAKE.cap + DEFAULT_RAKE.toke);
+
+/* ---------------- roulette: the playable table ---------------- */
+head("ROULETTE TABLE — chips on the felt");
+{
+  ok("00 is its own straight-up bet", tableBet("n:00").covers("00") && !tableBet("n:00").covers("0"));
+  ok("every single number pays 35 to 1 at 5.26%",
+    WHEEL.every((p) => Math.abs(edgeFor(tableBet(`n:${p}`)).houseEdge - 2 / 38) < 1e-12));
+  ok("layout grid holds 1-36 exactly once",
+    LAYOUT_ROWS.flat().sort((a, b) => a - b).join(",") === Array.from({ length: 36 }, (_, i) => i + 1).join(","));
+  ok("layout top row is the 3-column", LAYOUT_ROWS[0].every((n) => n % 3 === 0));
+
+  const r = settleTable({ red: 10, "n:7": 5, black: 20, dozen1: 10 }, "7");
+  ok("7 pays red, the straight-up 7 and the first dozen",
+    r.winners.map((w) => w.key).sort().join(",") === "dozen1,n:7,red");
+  near("returned = stakes + winnings on winners", r.returned, (10 + 10) + (5 + 175) + (10 + 20), 1e-9);
+  ok("black loses on red 7", r.losers.length === 1 && r.losers[0].key === "black");
+  near("staked is the whole table", r.staked, 45, 1e-9);
+
+  const g = settleTable({ red: 10, black: 10, odd: 10, even: 10, low: 10, high: 10 }, "00");
+  ok("00 sweeps every even-money bet", g.returned === 0 && g.losers.length === 6);
+}
+
+/* ---------------- craps: the whole table ---------------- */
+head("CRAPS TABLE — rules");
+{
+  const T = (bets: TableState["bets"], point: TableState["point"] = null, extra: Partial<TableState> = {}): TableState =>
+    ({ point, bets, comePoints: {}, dontComePoints: {}, ...extra });
+
+  let r = resolveRoll(T({ pass: 10, dontPass: 10 }), 3, 4);
+  ok("come-out 7: pass wins, don't pass loses", r.returned === 20 && !r.state.bets.pass && !r.state.bets.dontPass);
+
+  r = resolveRoll(T({ pass: 10, dontPass: 10 }), 6, 6);
+  ok("come-out 12: pass loses, don't pass ties and stays up",
+    r.returned === 0 && !r.state.bets.pass && r.state.bets.dontPass === 10);
+
+  r = resolveRoll(T({ pass: 10, place6: 30, hard8: 10 }), 4, 2);
+  ok("come-out 6 sets the point", r.state.point === 6);
+  ok("place bets are off on the come-out", r.events.every((e) => e.label !== "Place 6") && r.state.bets.place6 === 30);
+
+  r = resolveRoll(T({ pass: 10, place6: 30 }, 8), 2, 4);
+  ok("place 6 works once a point is set and stays up", r.state.bets.place6 === 30);
+  near("place 6 pays 7 to 6", r.returned, 35, 1e-9);
+
+  r = resolveRoll(T({ place6: 25 }, 8), 3, 3);
+  near("fractions of a cent are kept by the house ($25 on the 6 pays $29.16)", r.returned, 29.16, 1e-9);
+
+  r = resolveRoll(T({ hard8: 10 }, 6), 5, 3);
+  ok("an easy 8 kills the hard 8", r.returned === 0 && !r.state.bets.hard8);
+  r = resolveRoll(T({ hard8: 10 }, 6), 4, 4);
+  near("hard 8 pays 9 to 1 and stays up", r.returned, 90, 1e-9);
+
+  r = resolveRoll(T({ pass: 10, passOdds: 20 }, 4), 2, 2);
+  near("making a 4 pays the line 1:1 and the odds 2:1", r.returned, 20 + 60, 1e-9);
+  ok("making the point turns it off", r.state.point === null);
+
+  r = resolveRoll(T({ pass: 10, passOdds: 20, place5: 10, dontPass: 10 }, 9), 6, 1);
+  ok("seven out: line, odds and place bets lose; don't pass wins",
+    r.returned === 20 && !r.state.bets.pass && !r.state.bets.passOdds && !r.state.bets.place5);
+
+  let s = resolveRoll(T({ come: 10 }, 6), 2, 3).state;
+  ok("a come bet travels to its number", s.comePoints[5] === 10 && !s.bets.come);
+  r = resolveRoll(s, 4, 1);
+  ok("…and wins when that number rolls again", r.returned === 20 && !r.state.comePoints[5]);
+
+  s = T({}, 6, { comePoints: { 5: 10 }, dontComePoints: { 9: 10 } });
+  r = resolveRoll(s, 3, 4);
+  ok("a 7 loses come points and wins don't-come points", r.returned === 20 && !r.state.comePoints[5]);
+
+  r = resolveRoll(T({ field: 10 }), 6, 6);
+  near("field pays triple on 12", r.returned, 40, 1e-9);
+  r = resolveRoll(T({ field: 10, any7: 5 }), 2, 5);
+  ok("one-roll bets come off either way", !r.state.bets.field && !r.state.bets.any7);
+  near("any seven pays 4 to 1", r.returned, 25, 1e-9);
+
+  ok("line bets can't go down once a point is set", !canBet(T({}, 6), "pass", 5).ok);
+  ok("come bets need a point", !canBet(T({}), "come", 5).ok);
+  ok("odds need a pass line bet", !canBet(T({}, 6), "passOdds", 5).ok);
+  ok("odds are capped at 5x on a 6", canBet(T({ pass: 10 }, 6), "passOdds", 50).ok && !canBet(T({ pass: 10 }, 6), "passOdds", 55).ok);
+  ok("the pass line is a contract once the point is set", !canRemove(T({ pass: 10 }, 6), "pass"));
+  ok("…but can come down before the come-out", canRemove(T({ pass: 10 }), "pass"));
+  ok("onTable counts travelled come bets", onTable(T({ pass: 5 }, 6, { comePoints: { 8: 10 } })) === 15);
+}
+
+head("CRAPS TABLE — every main spot realises its published edge");
+{
+  const measure = (spot: Spot, rolls: number) => {
+    const rng = makeRng("craps-" + spot);
+    let st: TableState = { point: null, bets: {}, comePoints: {}, dontComePoints: {} };
+    let net = 0, decided = 0;
+    for (let i = 0; i < rolls; i++) {
+      if (!st.bets[spot] && canBet(st, spot, 30).ok) st = { ...st, bets: { ...st.bets, [spot]: 30 } };
+      const res = resolveRoll(st, 1 + Math.floor(rng() * 6), 1 + Math.floor(rng() * 6));
+      for (const e of res.events) {
+        if (e.label !== SPOTS[spot].label) continue;
+        if (e.outcome === "win") { net += e.won; decided += e.stake; }
+        if (e.outcome === "lose") { net -= e.stake; decided += e.stake; }
+      }
+      st = res.state;
+    }
+    return -net / decided;
+  };
+  for (const spot of ["pass", "field", "place6", "place4", "big8", "hard6", "any7", "yo"] as Spot[]) {
+    near(`${SPOTS[spot].label} ≈ ${(SPOTS[spot].edge * 100).toFixed(2)}%`, measure(spot, 500_000), SPOTS[spot].edge, 0.012);
+  }
+}
+
+/* ---------------- poker ---------------- */
+head("POKER — hand evaluator");
+{
+  const cat = (s: string) => pokerEval(parseHand(s)).name;
+  const beats = (a: string, b: string) => pokerEval(parseHand(a)).value > pokerEval(parseHand(b)).value;
+  ok("royal flush is a straight flush", cat("Ah Kh Qh Jh 10h 2c 3d") === "Straight flush");
+  ok("the wheel straight flush counts", cat("Ah 2h 3h 4h 5h Kc Kd") === "Straight flush");
+  ok("two sets make a full house", cat("Ks Kh Kd 2c 2s 2h 8d") === "Full house");
+  ok("ace-low straight", cat("Ac 2d 3s 4h 5c Kd Kh") === "Straight");
+  ok("flush beats straight", beats("Ah Jh 8h 6h 2h Kc Kd", "10c 9d 8s 7h 6c 2d 2h"));
+  ok("full house beats flush", beats("Ks Kh Kd 2c 2s 7h 8d", "Ah Jh 8h 6h 2h Kc Qd"));
+  ok("kicker decides a shared pair", beats("Ah Kd 9s 9c 2h 3d 5c", "Ah Qd 9s 9c 2h 3d 5c"));
+  ok("the wheel loses to a six-high straight", beats("2d 3s 4h 5c 6d Kd Qh", "Ac 2d 3s 4h 5c Kd Qh"));
+  ok("when the board plays, it's a tie",
+    pokerEval(parseHand("2c 3d Ah Kh Qh Jh 10h")).value === pokerEval(parseHand("4c 5d Ah Kh Qh Jh 10h")).value);
+  ok("every ranking example evaluates to its own name",
+    RANKING_EXAMPLES.every((r) => pokerEval(parseHand(r.cards)).name === r.name));
+}
+
+head("POKER — scenarios teach what they claim");
+{
+  const want: Record<string, "call" | "fold"> = {
+    aces: "call", "flush-draw": "call", gutshot: "fold", "coin-flip": "call", "weak-kicker": "fold",
+  };
+  for (const sc of SCENARIOS) {
+    const { hero, villain, board } = scenarioCards(sc);
+    const eq = equity(hero, villain, board, makeRng("t-" + sc.id), 40_000);
+    const verdict = callEv(sc, eq) > 0 ? "call" : "fold";
+    ok(`${sc.title}: ${want[sc.id]} (equity ${(eq.share * 100).toFixed(1)}%, needs ${(requiredShare(sc) * 100).toFixed(1)}%)`,
+      verdict === want[sc.id]);
+  }
+  const fd = scenarioCards(SCENARIOS[1]);
+  ok("flop equity is enumerated exactly", equity(fd.hero, fd.villain, fd.board).exact);
+  const aa = scenarioCards(SCENARIOS[0]);
+  near("aces vs kings ≈ 81.26% (exact enumeration of all 1.7M boards)",
+    equity(aa.hero, aa.villain, aa.board, makeRng("aa"), 60_000).share, 0.81255, 0.006);
+}
 
 /* ---------------- summary ---------------- */
 console.log(`\n${"=".repeat(52)}`);

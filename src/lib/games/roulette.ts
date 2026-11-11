@@ -154,3 +154,83 @@ export const WHEEL_INFO = {
   blurb:
     "Two zeros. A second one was added and no payout changed — that is the entire innovation, and it doubles the edge.",
 };
+
+/* ------------------------------------------------------------------ */
+/* The betting layout                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Keys for every spot on the simplified layout: any single number
+ * ("n:17", "n:0", "n:00"), plus the outside bets already in BET_TYPES.
+ * Splits, corners and streets are left off the playable table on
+ * purpose — they add clutter without teaching anything the single
+ * numbers and outside bets don't.
+ */
+export type TableBetKey = string;
+
+const straightCache = new Map<string, BetType>();
+
+export function tableBet(key: TableBetKey): BetType {
+  if (key.startsWith("n:")) {
+    const label = key.slice(2);
+    let bet = straightCache.get(label);
+    if (!bet) {
+      bet = {
+        id: key,
+        label: label === "0" || label === "00" ? label : `Number ${label}`,
+        payout: 35,
+        group: "inside",
+        coverCount: 1,
+        covers: (p) => p === label,
+      };
+      straightCache.set(label, bet);
+    }
+    return bet;
+  }
+  const bet = BET_TYPES.find((b) => b.id === key);
+  if (!bet) throw new Error(`Unknown roulette bet: ${key}`);
+  return bet;
+}
+
+export interface SpinResult {
+  pocket: string;
+  /** Money returned to the bankroll: stake plus winnings on every winner. */
+  returned: number;
+  /** Total that was on the table. */
+  staked: number;
+  winners: { key: TableBetKey; label: string; stake: number; won: number }[];
+  losers: { key: TableBetKey; label: string; stake: number }[];
+}
+
+/** Settle a whole table of chips against one pocket. */
+export function settleTable(
+  bets: Record<TableBetKey, number>,
+  pocket: string,
+): SpinResult {
+  const winners: SpinResult["winners"] = [];
+  const losers: SpinResult["losers"] = [];
+  let returned = 0;
+  let staked = 0;
+
+  for (const [key, stake] of Object.entries(bets)) {
+    if (!stake) continue;
+    staked += stake;
+    const bet = tableBet(key);
+    if (bet.covers(pocket)) {
+      const won = stake * bet.payout;
+      returned += stake + won;
+      winners.push({ key, label: bet.label, stake, won });
+    } else {
+      losers.push({ key, label: bet.label, stake });
+    }
+  }
+
+  return { pocket, returned, staked, winners, losers };
+}
+
+/** Number grid exactly as printed on the felt: 3 rows × 12 columns. */
+export const LAYOUT_ROWS: number[][] = [
+  Array.from({ length: 12 }, (_, c) => 3 * c + 3), // top row: 3, 6 … 36
+  Array.from({ length: 12 }, (_, c) => 3 * c + 2), // middle: 2, 5 … 35
+  Array.from({ length: 12 }, (_, c) => 3 * c + 1), // bottom: 1, 4 … 34
+];

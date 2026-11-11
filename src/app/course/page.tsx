@@ -16,7 +16,7 @@ const SYLLABUS = [
     id: "ev",
     title: "Expected value and the house edge",
     via: "Roulette",
-    href: "/roulette#wheel",
+    href: "/roulette#play",
     formula: "EV = Σ pᵢ · xᵢ",
     idea: "A bet's value is the sum of its outcomes weighted by their probabilities. A casino bet is one where that sum is negative, because the payout is computed from a denominator smaller than the real one.",
     transfer:

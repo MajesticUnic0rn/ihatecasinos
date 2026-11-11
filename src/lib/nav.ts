@@ -4,9 +4,9 @@
  * boundary to read a plain array.
  */
 export const NAV = [
-  { href: "/roulette", label: "Roulette", note: "House edge & Martingale" },
-  { href: "/blackjack", label: "Blackjack", note: "Conditional probability" },
-  { href: "/craps", label: "Craps", note: "Vig vs free odds" },
-  { href: "/poker", label: "Poker", note: "The rake" },
-  { href: "/course", label: "The Course", note: "All seven lessons" },
+  { href: "/roulette", label: "Roulette", note: "Pick a number or a color" },
+  { href: "/blackjack", label: "Blackjack", note: "Get to 21 without busting" },
+  { href: "/craps", label: "Craps", note: "The whole table" },
+  { href: "/poker", label: "Poker", note: "Five real spots" },
+  { href: "/course", label: "The math", note: "All seven concepts" },
 ];

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
-import { CrapsLab } from "@/components/craps/CrapsLab";
+import { GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameHeader, HowToPlay, PlaySection, TakeAway } from "@/components/game/GameShell";
+import { GoDeeper } from "@/components/game/GoDeeper";
+import { CrapsPlay } from "@/components/craps/CrapsPlay";
+import { DicePair } from "@/components/ui/dice";
 import { EdgeBars } from "@/components/viz/charts";
-import { Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
+import { Callout, Panel, Stat, TableWrap } from "@/components/ui";
 import {
   CRAPS_BETS,
   ODDS_LADDER,
@@ -29,33 +32,69 @@ const ladderRows = ODDS_LADDER.filter((l) => l.multiple <= 20).map((l) => ({
 export default function CrapsPage() {
   return (
     <>
-      <GameTop
+      <GameHeader
         game="Craps"
-        concept="Vig and free odds"
-        accent="amber"
-        title={<>One bet here takes nothing at all, and nobody is shouting about it.</>}
-        lede={
+        title="Bet on the dice. The simplest bet is the best one."
+        tagline="Two dice and a table full of boxes. Every box is a different bet with a different price — and the cheapest one is right in front of you."
+      />
+
+      <HowToPlay
+        steps={[
+          {
+            title: "Bet the Pass Line",
+            body: "Before the first roll, put your chips on the Pass Line. That is the main bet, and the one to learn first.",
+          },
+          {
+            title: "The first roll",
+            body: (
+              <>
+                <strong>7 or 11:</strong> you win. <strong>2, 3 or 12:</strong>{" "}
+                you lose. Any other number — 4, 5, 6, 8, 9, 10 — becomes{" "}
+                <strong>the point</strong>.
+              </>
+            ),
+            visual: <DicePair a={3} b={4} size={34} gap={6} />,
+          },
+          {
+            title: "Hit the point",
+            body: "The dice keep rolling. Roll the point again before a 7 and you win. Roll a 7 first and you lose — that’s a “seven out.”",
+          },
+          {
+            title: "Add the odds",
+            body: "Once there’s a point, add chips in the Odds box. It pays exactly fair odds — the only bet in the casino the house takes nothing from.",
+          },
+        ]}
+        catchLine={
           <>
-            Throw the dice — real rigid bodies, a back wall to hit,
-            deterministic on a fixed timestep. Slide the free odds up and watch
-            the blended edge fall. The histogram below creeps toward the grey
-            ticks as you roll.
+            Seven is the most common roll — 6 of the 36 ways two dice can land.
+            Every bet on the table pays a little less than its true odds, and
+            the colourful bets in the middle pay a lot less.
           </>
         }
-        stats={[
-          { label: "Pass line", value: "1.41%", note: "244 ways win, 251 lose" },
-          { label: "Free odds", value: "0.00%", note: "paid at exactly true odds" },
-          { label: "Pass + 3-4-5\u00d7", value: pct(pass345Edge(), 3), note: "the best bet in the house" },
-          { label: "Any 7", value: "16.67%", note: "the worst, six inches away" },
-        ]}
-      >
-        <CrapsLab />
-      </GameTop>
-
-      <Marquee
-        tone="ink"
-        items={["36 outcomes", "every price checkable", "take the odds", "ignore the middle"]}
       />
+
+      <PlaySection hint="Hover any box on the felt to see how it works and what the house keeps.">
+        <CrapsPlay />
+      </PlaySection>
+
+      <TakeAway
+        numbers={[
+          { value: "1.41%", label: "House edge on the Pass Line. One of the best deals in the casino." },
+          { value: "0%", label: "House edge on the Odds bet. Truly free, which is why there is no sign for it." },
+          { value: "16.67%", label: "House edge on Any Seven — the worst bet on the same table." },
+        ]}
+        line={
+          <>
+            Same dice, same table, same roll. The box you put your chips in
+            changes what you pay by more than ten times.
+          </>
+        }
+      />
+
+      <GoDeeper
+        topics={["The 36 outcomes", "Why the Pass Line wins 49.3%", "How free odds work", "Every bet, priced", "How to lose less"]}
+      >
+
 
       {/* ---------------- the table ---------------- */}
       <Section
@@ -298,6 +337,8 @@ export default function CrapsPage() {
           </div>
         </div>
       </Section>
+
+      </GoDeeper>
 
       <GameSwitcher current="/craps" />
     </>

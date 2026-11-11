@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameHeader, HowToPlay, PlaySection, TakeAway } from "@/components/game/GameShell";
+import { GoDeeper } from "@/components/game/GoDeeper";
+import { PokerPlay, HandRankings } from "@/components/poker/PokerPlay";
 import { RakeLab } from "@/components/poker/RakeLab";
 import { PotOdds } from "@/components/poker/PotOdds";
-import { Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
+import { Callout, Panel, Stat, TableWrap } from "@/components/ui";
 import { MATCHUPS, PREFLOP_FACTS } from "@/lib/games/poker";
 import { pct } from "@/lib/stats";
 
@@ -16,32 +19,78 @@ export const metadata: Metadata = {
 export default function PokerPage() {
   return (
     <>
-      <GameTop
+      <GameHeader
         game="Poker"
-        concept="The rake"
-        accent="violet"
-        title={<>You can be the best player at the table and still go home down.</>}
-        lede={
+        title="Make the best five-card hand — or make everyone else fold."
+        tagline="Texas Hold’em: two cards for you, five shared cards on the table, and rounds of betting in between."
+      />
+
+      <HowToPlay
+        steps={[
+          {
+            title: "Two cards each",
+            body: "Everyone gets two private cards, face down. Nobody else sees yours.",
+          },
+          {
+            title: "Five shared cards",
+            body: "Three come out together (the flop), then one more (the turn), then a last one (the river). Everyone uses them.",
+          },
+          {
+            title: "Bet as the cards come",
+            body: "After each round of cards you can check, bet, call, raise — or fold, which means giving up the hand and anything you’ve put in.",
+          },
+          {
+            title: "Best hand wins",
+            body: "Make the best five-card hand from your two cards plus the five shared ones. Or win without a showdown by making everyone else fold.",
+          },
+        ]}
+        catchLine={
           <>
-            Set the sliders to a game you have actually sat in. The number that
-            matters is bottom-right, and the chart beside it shows what that
-            number does to people who are genuinely good at this.
+            Your opponents are the other players. The casino still takes a
+            slice of every pot — the rake — so the table as a whole loses
+            money on every single hand.
           </>
         }
-        stats={[
-          { label: "House edge", value: "0%", note: "the house sits out the hand" },
-          { label: "Rake, live $1/$2", value: "~10 BB/100", note: "with the dealer toke" },
-          { label: "Strong win rate", value: "~6 BB/100", note: "before rake, and genuinely hard" },
-          { label: "Net", value: "\u22124 BB/100", note: "do the subtraction" },
+      />
+
+      <section className="border-b-2 border-ink bg-paper">
+        <div className="mx-auto max-w-7xl px-5 pb-14 md:px-8">
+          <h2 className="text-h4 md:text-h3 mb-6 font-bold">Which hands win</h2>
+          <HandRankings />
+        </div>
+      </section>
+
+      <PlaySection hint="Five real spots. Call or fold — then see how the cards fall, and whether the call was right.">
+        <PokerPlay />
+      </PlaySection>
+
+      <TakeAway
+        numbers={[
+          { value: "81%", label: "Pocket aces against kings, all-in. The aces still lose almost one time in five." },
+          { value: "Price", label: "Whether to call depends on your chance against the price — never on how good your hand feels." },
+          { value: "$6/hr", label: "Rake and tips leaving each player’s stack at a typical $1/$2 table." },
         ]}
+        line={
+          <>
+            Poker is the one casino game you can beat. To do it you have to
+            out-play the other players by more than the rake takes — and most
+            players never do.
+          </>
+        }
+      />
+
+      <GoDeeper
+        topics={["The rake calculator", "Why the house is a landlord", "Pot odds trainer", "Luck vs skill", "How to lose less"]}
+      >
+      <Section
+        tone="felt"
+        eyebrow="The rake"
+        title="A fixed tax on a zero-sum game"
+        lede={<>Set the sliders to a game you have actually sat in. The chart shows what the rake does to people who are genuinely good at this.</>}
       >
         <RakeLab />
-      </GameTop>
+      </Section>
 
-      <Marquee
-        tone="violet"
-        items={["zero sum between players", "negative sum after the rake", "skill and profit differ"]}
-      />
 
       {/* ---------------- why it's different ---------------- */}
       <Section
@@ -255,6 +304,8 @@ export default function PokerPage() {
           </tbody>
         </TableWrap>
       </Section>
+
+      </GoDeeper>
 
       <GameSwitcher current="/poker" />
     </>

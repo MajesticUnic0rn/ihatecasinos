@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { PlayingCard } from "@/components/cards/PlayingCard";
-import { FINISH_META, parseCard, type Finish } from "@/lib/cards";
-import { Badge } from "@/components/ui";
+import { parseCard, type Finish } from "@/lib/cards";
 
 const DEMO: { id: string; finish: Finish }[] = [
   { id: "Ks", finish: "holo" },
@@ -46,22 +45,6 @@ export function CardShowcase() {
             </div>
           );
         })}
-      </div>
-
-      <div className="flex min-h-[2.5rem] flex-wrap items-center justify-center gap-2 text-center">
-        {hovered !== null ? (
-          <>
-            <Badge tone="violet">{FINISH_META[DEMO[hovered].finish].label}</Badge>
-            <span className="text-sm text-cream/70">
-              {FINISH_META[DEMO[hovered].finish].meaning}
-            </span>
-          </>
-        ) : (
-          <span className="text-sm text-cream/45">
-            Hover a card. The finish isn&apos;t decoration — it encodes the
-            card&apos;s Hi-Lo count value.
-          </span>
-        )}
       </div>
     </div>
   );

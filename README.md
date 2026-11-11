@@ -4,6 +4,15 @@ An interactive probability course that uses casino games as worked examples. Fou
 
 **The thesis:** every casino game is a bet whose payout is computed from slightly wrong odds. None of them is rigged, and that's the point — they don't need to be. A small, honest, fully-disclosed edge applied to a large number of bets is mathematically indistinguishable from a slow robbery, and it's entirely legal.
 
+## How each game page works
+
+Every game page follows the same simple shape, top to bottom:
+
+1. **How to play** — the rules in three or four short steps, plus one line on where the house gets its money.
+2. **Here's $1,000** — the playable game: a real roulette betting layout, a 6-deck blackjack shoe with a hint button, the full craps felt (line, come, field, place numbers, big 6/8, hardways and the proposition box), and five poker spots where you call or fold.
+3. **What actually happens** — two or three numbers.
+4. **Go deeper** — everything else (simulators, charts, strategy, counting), collapsed and not even loaded until opened. Deep links such as `/roulette#simulator` open it automatically.
+
 ## The lessons
 
 | # | Idea | Taught via |
@@ -76,7 +85,7 @@ Those finishes are not decoration: a finish **encodes the card's Hi-Lo count val
 Every quantitative claim on the site is checked against a closed form or a large Monte Carlo run:
 
 ```bash
-npm test     # 147 assertions
+npm test     # 206 assertions
 ```
 
 Covers wheel integrity, all 18 roulette bets, the Martingale closed form, gambler's ruin, 22 known basic-strategy spots (including `11 vs A → Hit` under S17, which is widely misremembered as Double), Hi-Lo balance, the craps 36-outcome table and odds ladder, and poker draw equities.
@@ -106,12 +115,15 @@ Deploys to Vercel with zero configuration — all seven routes prerender as stat
 src/
   app/                 one route per game + /course
   components/
+    game/              GameHeader, HowToPlay, PlaySection, TakeAway, GoDeeper
     cards/             procedural SVG cards + CSS foil/holo
     three/             RouletteWheel (animated), DiceTray (Rapier)
     viz/               hand-written SVG charts
     roulette/ blackjack/ craps/ poker/
   lib/
     games/             roulette, blackjack, craps, poker — pure math
+                       crapsTable.ts: every spot on the felt as a state machine
+                       holdem.ts: 7-card evaluator, exact equity, scenarios
     sim/               seeded engine + Web Worker + hook
     stats.ts           EV, gambler's ruin, Kelly, handle
     strategies.ts      the six betting progressions

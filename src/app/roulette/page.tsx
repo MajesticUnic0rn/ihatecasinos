@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
-import { WheelLab } from "@/components/roulette/WheelLab";
+import { GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameHeader, HowToPlay, PlaySection, TakeAway } from "@/components/game/GameShell";
+import { GoDeeper } from "@/components/game/GoDeeper";
+import { RoulettePlay } from "@/components/roulette/RoulettePlay";
 import { MartingaleLab } from "@/components/roulette/MartingaleLab";
 import { TimeOnDevice } from "@/components/roulette/TimeOnDevice";
 import { EdgeBars } from "@/components/viz/charts";
-import { Badge, Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
+import { Badge, Callout, Panel, Stat, TableWrap } from "@/components/ui";
 import { BET_TYPES, edgeFor } from "@/lib/games/roulette";
 import { analyzeMartingale, money, oneIn, pct } from "@/lib/stats";
 
@@ -27,43 +29,72 @@ const textbook = analyzeMartingale(1023, evenMoney.pWin);
 export default function RoulettePage() {
   return (
     <>
-      <GameTop
+      <GameHeader
         game="Roulette"
-        concept="Expected value"
-        accent="ember"
-        title={
-          <>
-            The wheel has 38 pockets. Every payout is priced for 36.
-          </>
-        }
-        lede={
-          <>
-            Spin it. Change the bet and the panel beside it rederives the
-            edge from scratch every time — winning pockets, fair payout,
-            actual payout, and the gap between the last two.
-          </>
-        }
-        stats={[
-          { label: "House edge", value: "5.26%", note: "on every bet but one" },
-          { label: "The exception", value: "7.89%", note: "the top line, which is worse" },
-          { label: "Red wins", value: "47.37%", note: "and pays as though it were 50%" },
-          { label: "Spins to lose half", value: "475", note: "$10 flat, $500 in" },
-        ]}
-      >
-        <div id="wheel" className="scroll-mt-20">
-          <WheelLab />
-        </div>
-      </GameTop>
-
-      <Marquee
-        tone="ember"
-        items={[
-          "36 numbers",
-          "38 pockets",
-          "35 to 1",
-          "do the subtraction",
-        ]}
+        title="Guess where the ball lands."
+        tagline="Bet on a single number, a color, or odd and even. The dealer spins, the ball drops into one pocket, and every chip on the table either wins or loses."
       />
+
+      <HowToPlay
+        steps={[
+          {
+            title: "Place your chips",
+            body: "Put chips on a single number, red or black, odd or even, low (1–18) or high (19–36), or a group of twelve numbers.",
+            visual: (
+              <div className="flex gap-1.5">
+                {[["#d42a30", "7"], ["#0e1620", "8"], ["#d42a30", "9"], ["#17864f", "0"]].map(([bg, n]) => (
+                  <span key={n} className="grid h-9 w-9 place-items-center rounded-[6px] border-2 border-ink font-bold text-white" style={{ background: bg }}>{n}</span>
+                ))}
+              </div>
+            ),
+          },
+          {
+            title: "The wheel spins",
+            body: "The ball lands in one of 38 pockets: the numbers 1 to 36, plus a green 0 and a green 00.",
+          },
+          {
+            title: "Get paid",
+            body: (
+              <ul className="flex flex-col gap-1">
+                <li><strong>1 to 1</strong> — red/black, odd/even, low/high</li>
+                <li><strong>2 to 1</strong> — a dozen or a column</li>
+                <li><strong>35 to 1</strong> — one single number</li>
+              </ul>
+            ),
+          },
+        ]}
+        catchLine={
+          <>
+            0 and 00 are green. They count as neither red nor black, odd nor
+            even — so when the ball lands on one, every one of those bets
+            loses. Two pockets out of 38 is the house&apos;s entire edge.
+          </>
+        }
+      />
+
+      <PlaySection hint="Hover any spot on the table to see what it pays.">
+        <RoulettePlay />
+      </PlaySection>
+
+      <TakeAway
+        numbers={[
+          { value: "47.4%", label: "Chance that red wins. It pays as though it were a fair 50%." },
+          { value: "5.26%", label: "Kept by the house from every bet, on average — on every spot but one." },
+          { value: "−$26", label: "What an hour of $10 spins costs you on average (about 50 spins)." },
+        ]}
+        line={
+          <>
+            Any single spin can go your way. Over a few hundred spins, the two
+            green pockets win — slowly, quietly, and every time.
+          </>
+        }
+      />
+
+      <GoDeeper
+        anchors={["simulator"]}
+        topics={["Why every bet costs the same", "The gambler’s fallacy", "The Martingale system", "Time at the table", "How to lose less"]}
+      >
+
 
       {/* ---------------- 2. every bet, same edge ---------------- */}
       <Section
@@ -392,6 +423,8 @@ export default function RoulettePage() {
           </p>
         </Callout>
       </Section>
+
+      </GoDeeper>
 
       <GameSwitcher current="/roulette" />
     </>

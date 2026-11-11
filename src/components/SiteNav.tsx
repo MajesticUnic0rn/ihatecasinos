@@ -54,10 +54,10 @@ export function SiteNav() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/roulette#simulator"
+            href="/#games"
             className="brut-sm brut-press hidden rounded-[50px] bg-ink px-4 py-2 text-xs font-bold tracking-wide text-cream uppercase sm:block"
           >
-            Run a simulation
+            Play with $1,000
           </Link>
           <button
             onClick={() => setOpen((o) => !o)}

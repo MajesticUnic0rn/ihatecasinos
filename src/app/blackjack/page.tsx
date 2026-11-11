@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameSwitcher, Section, Prose } from "@/components/PageHero";
+import { GameHeader, HowToPlay, PlaySection, TakeAway } from "@/components/game/GameShell";
+import { GoDeeper } from "@/components/game/GoDeeper";
+import { PlayingCard } from "@/components/cards/PlayingCard";
+import { parseHand } from "@/lib/cards";
 import { StrategyChart } from "@/components/blackjack/StrategyChart";
 import { BlackjackTable } from "@/components/blackjack/BlackjackTable";
 import { CountingLab } from "@/components/blackjack/CountingLab";
 import { EdgeBars } from "@/components/viz/charts";
-import { Badge, Callout, Marquee, Panel, TableWrap } from "@/components/ui";
+import { Badge, Callout, Panel, TableWrap } from "@/components/ui";
 import { DEALER_BUST, P_BLACKJACK, RULE_EFFECTS, UPCARDS } from "@/lib/games/blackjack";
 import { pct } from "@/lib/stats";
 
@@ -17,37 +21,71 @@ export const metadata: Metadata = {
 export default function BlackjackPage() {
   return (
     <>
-      <GameTop
+      <GameHeader
         game="Blackjack"
-        concept="Conditional probability"
-        accent="lagoon"
-        title={
-          <>
-            The dealer&apos;s upcard is the most valuable piece of information
-            in the building.
-          </>
-        }
-        lede={
-          <>
-            Play a real 6-deck shoe. Every decision is graded against the
-            chart. Flip the payout to 6:5 and watch your bankroll change while
-            your play stays identical.
-          </>
-        }
-        stats={[
-          { label: "Basic strategy, 3:2", value: "0.50%", note: "about as good as a casino gets" },
-          { label: "Same play, 6:5", value: "1.89%", note: "one number on the felt" },
-          { label: "Average player", value: "~2.0%", note: "strategy errors, mostly timid" },
-          { label: "P(natural)", value: pct(P_BLACKJACK, 2), note: "and this is what they repriced" },
-        ]}
-      >
-        <BlackjackTable />
-      </GameTop>
-
-      <Marquee
-        tone="violet"
-        items={["read the felt first", "3 to 2 pays", "decline insurance", "split aces and eights"]}
+        title="Get closer to 21 than the dealer, without going over."
+        tagline="You and the dealer both get cards. The higher total wins — and anyone who goes over 21 loses on the spot."
       />
+
+      <HowToPlay
+        steps={[
+          {
+            title: "Know the card values",
+            body: "2 to 10 count as their number. Jack, queen and king count as 10. An ace counts as 1 or 11 — whichever helps you.",
+            visual: (
+              <div className="flex gap-1">
+                {parseHand("Ah Kd 7c").map((c, i) => (
+                  <PlayingCard key={c.id} card={c} width={42} index={i} interactive={false} />
+                ))}
+              </div>
+            ),
+          },
+          {
+            title: "Hit or stand",
+            body: "Hit to take another card. Stand to stop and keep your total. Take as many cards as you like.",
+          },
+          {
+            title: "Don’t bust",
+            body: "Go over 21 and you lose immediately — even if the dealer goes over later.",
+          },
+          {
+            title: "Beat the dealer",
+            body: "The dealer must keep hitting until reaching 17. Finish higher, or watch the dealer bust, and you win. Ace plus a ten-card is a blackjack and pays 3 to 2.",
+          },
+        ]}
+        catchLine={
+          <>
+            You play first. If you bust, your bet is gone before the dealer
+            even turns over the hidden card — and that one rule is where the
+            house gets its edge.
+          </>
+        }
+      />
+
+      <PlaySection hint="Every move you make is graded against the perfect-play chart. Use the hint button whenever you’re unsure.">
+        <BlackjackTable />
+      </PlaySection>
+
+      <TakeAway
+        numbers={[
+          { value: "0.5%", label: "The house edge if you play every hand perfectly at a table paying 3 to 2." },
+          { value: "~2%", label: "The house edge for a typical player who plays by feel." },
+          { value: "+1.4%", label: "Extra the house takes at tables that pay blackjack 6 to 5. Check the felt." },
+        ]}
+        line={
+          <>
+            Blackjack is the one game where your choices change the odds.
+            Play perfectly and the house still keeps about half a cent of
+            every dollar you bet.
+          </>
+        }
+      />
+
+      <GoDeeper
+        anchors={["counting"]}
+        topics={["The dealer’s upcard", "The perfect-play chart", "6:5 tables", "Insurance", "Card counting simulator", "How to lose less"]}
+      >
+
 
       {/* ---------------- dealer upcard ---------------- */}
       <Section
@@ -339,6 +377,8 @@ export default function BlackjackPage() {
           ))}
         </div>
       </Section>
+
+      </GoDeeper>
 
       <GameSwitcher current="/blackjack" />
     </>
