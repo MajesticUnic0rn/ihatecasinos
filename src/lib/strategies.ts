@@ -60,7 +60,7 @@ export const STRATEGIES: Record<StrategyId, Strategy> = {
     tagline: "Same bet, every time.",
     promise: "Nothing. It promises nothing.",
     reality:
-      "The honest baseline. Your loss rate equals the house edge exactly, and your bankroll dies of old age rather than in a single hand.",
+      "The honest baseline. Your loss rate equals the house edge exactly, and your bankroll dies slowly of old age.",
     risk: "low",
     next: (_s, base) => base,
     update: (s, won) => ({
@@ -127,7 +127,7 @@ export const STRATEGIES: Record<StrategyId, Strategy> = {
     promise:
       "Wins and losses even out, so stepping down after wins locks in the difference.",
     reality:
-      "Built on the gambler's fallacy wearing a cravat. Wins and losses do not 'even out' — the difference between them grows without bound; only the ratio converges. Gentler than Martingale because it is linear, not exponential.",
+      "Built on the gambler's fallacy wearing a cravat. The ratio of wins to losses converges, while the raw difference between the counts grows without bound — so there is nothing to 'even out'. Gentler than Martingale, since it grows linearly where Martingale compounds.",
     risk: "medium",
     next: (s, base) => base * (1 + s.level),
     update: (s, won) => ({
@@ -143,7 +143,7 @@ export const STRATEGIES: Record<StrategyId, Strategy> = {
     tagline: "Advance the sequence on a loss, step back two on a win.",
     promise: "A mathematically elegant recovery curve.",
     reality:
-      "Elegance is not edge. Growth is roughly φ^n ≈ 1.618^n instead of 2^n, so it buys a few extra steps before the table limit stops you. The cliff is further away. It is still a cliff.",
+      "Elegance buys you steps, never edge. Growth is roughly φ^n ≈ 1.618^n instead of 2^n, so it buys a few extra steps before the table limit stops you. The cliff is further away. It is still a cliff.",
     risk: "extreme",
     next: (s, base) => base * FIB[Math.min(s.level, FIB.length - 1)],
     update: (s, won) => ({

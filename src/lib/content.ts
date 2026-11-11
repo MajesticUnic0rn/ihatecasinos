@@ -44,7 +44,7 @@ export const GAMES = [
     lesson: "The rake",
     tone: "violet" as const,
     blurb:
-      "The only beatable game, which is why most people who play it lose. The house isn't your opponent — it's a fixed tax on every pot, and it quietly eats most of the edge a good player has.",
+      "The only beatable game, which is why most people who play it lose. The house sits out the hand and takes a fixed tax on every pot, quietly eating most of the edge a good player has.",
     statA: { label: "Rake, low stakes", value: "~10 BB/100" },
     statB: { label: "Good win rate", value: "~5 BB/100" },
   },
@@ -81,7 +81,7 @@ export const LESSONS = [
     via: "Martingale",
     href: "/roulette#simulator",
     blurb:
-      "A finite bankroll against an unbounded one. With a negative edge the probability of ruin isn't high — it's one, given enough time.",
+      "A finite bankroll against an unbounded one. With a negative edge, the probability of ruin approaches one given enough time.",
   },
   {
     id: "conditional",

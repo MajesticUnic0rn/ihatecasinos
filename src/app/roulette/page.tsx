@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PageHero, Section, Prose } from "@/components/PageHero";
+import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
 import { WheelLab } from "@/components/roulette/WheelLab";
 import { MartingaleLab } from "@/components/roulette/MartingaleLab";
 import { TimeOnDevice } from "@/components/roulette/TimeOnDevice";
@@ -33,22 +32,20 @@ const textbook = analyzeMartingale(1023, 18 / 37);
 export default function RoulettePage() {
   return (
     <>
-      <PageHero
-        eyebrow="Lesson 1 · Expected value"
+      <GameTop
+        game="Roulette"
+        concept="Expected value"
         accent="ember"
         title={
           <>
-            Every payout assumes zero isn&apos;t on the wheel.
-            <br />
-            Zero is on the wheel.
+            The wheel has 38 pockets. Every payout is priced for 36.
           </>
         }
         lede={
           <>
-            Roulette is the cleanest casino game to analyse because nothing is
-            hidden. No dealer decisions, no card removal, no skill to argue
-            about. There are 38 pockets and the table pays 36. Everything that
-            follows is that one sentence, compounded.
+            Spin it. Change the wheel, change the bet, and the panel beside
+            it rederives the edge from scratch every time — winning pockets,
+            fair payout, actual payout, and the gap between the last two.
           </>
         }
         stats={[
@@ -57,7 +54,11 @@ export default function RoulettePage() {
           { label: "With La Partage", value: "1.35%", note: "even-money bets only" },
           { label: "Spins to lose half", value: "475", note: "$10 flat, US wheel, $500 in" },
         ]}
-      />
+      >
+        <div id="wheel" className="scroll-mt-20">
+          <WheelLab />
+        </div>
+      </GameTop>
 
       <Marquee
         tone="ember"
@@ -69,32 +70,16 @@ export default function RoulettePage() {
         ]}
       />
 
-      {/* ---------------- 1. the lab ---------------- */}
-      <Section
-        id="wheel"
-        tone="felt"
-        eyebrow="Try it"
-        title="Spin it, and watch the derivation update underneath"
-        lede={
-          <>
-            Change the wheel, change the bet. The panel on the right recalculates
-            the edge from scratch every time — number of winning pockets, fair
-            payout, actual payout, and the gap between the last two.
-          </>
-        }
-      >
-        <WheelLab />
-      </Section>
-
       {/* ---------------- 2. every bet, same edge ---------------- */}
       <Section
-        eyebrow="Lesson 1a"
+        eyebrow="Why they all match"
         title="Nearly every bet on an American wheel has exactly the same edge"
         lede={
           <>
             Straight-up, split, corner, column, red. Wildly different win rates,
             wildly different payouts, and — with one exception — an identical
-            5.26% cut. This is not a coincidence; it is the design.
+            5.26% cut. The uniformity is deliberate — it falls straight out of
+            the formula.
           </>
         }
       >
@@ -121,7 +106,7 @@ export default function RoulettePage() {
                 rows={comparison}
                 title="The same even-money bet, four rule sets"
                 max={0.08}
-                caption="Rules are the only lever that actually moves this number. Not systems. Not timing. Not which numbers are 'due'."
+                caption="Rules are the only lever that moves this number. Systems, timing and 'due' numbers all leave it exactly where it was."
               />
             </Panel>
 
@@ -151,7 +136,7 @@ export default function RoulettePage() {
       {/* ---------------- 3. the fallacy ---------------- */}
       <Section
         tone="paper"
-        eyebrow="Lesson 2 · Independence"
+        eyebrow="Independence"
         title="Red has come up eight times. What should you bet?"
       >
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -223,7 +208,7 @@ export default function RoulettePage() {
       <Section
         id="simulator"
         tone="felt"
-        eyebrow="Lesson 3 · Betting systems"
+        eyebrow="Betting systems"
         title="The Martingale, and why it feels unbeatable"
         lede={
           <>
@@ -302,7 +287,7 @@ export default function RoulettePage() {
 
       {/* ---------------- 5. time on device ---------------- */}
       <Section
-        eyebrow="Lesson 4 · Handle"
+        eyebrow="Handle"
         title="The edge applies to everything you wager, not to what you brought"
         lede={
           <>
@@ -318,7 +303,7 @@ export default function RoulettePage() {
       {/* ---------------- 6. mitigation ---------------- */}
       <Section
         tone="paper"
-        eyebrow="Lesson 5 · Mitigation"
+        eyebrow="Mitigation"
         title="If you are going to play anyway"
         lede={
           <>
@@ -366,22 +351,7 @@ export default function RoulettePage() {
         </Callout>
       </Section>
 
-      {/* ---------------- next ---------------- */}
-      <Section tone="felt" className="border-b-0">
-        <div className="flex flex-col items-start gap-6">
-          <Badge tone="paper">Next</Badge>
-          <h2 className="text-h3 md:text-h2 max-w-3xl font-bold text-balance text-cream">
-            Roulette has no decisions in it. Blackjack has nothing but
-            decisions — and that changes what the math can do for you.
-          </h2>
-          <Link
-            href="/blackjack"
-            className="brut-sm brut-press rounded-[50px] bg-violet px-6 py-3 text-sm font-bold tracking-wide text-white uppercase"
-          >
-            Lesson 6 · Blackjack →
-          </Link>
-        </div>
-      </Section>
+      <GameSwitcher current="/roulette" />
     </>
   );
 }

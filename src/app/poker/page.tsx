@@ -1,71 +1,52 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHero, Section, Prose } from "@/components/PageHero";
+import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
 import { RakeLab } from "@/components/poker/RakeLab";
 import { PotOdds } from "@/components/poker/PotOdds";
-import { Badge, Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
+import { Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
 import { MATCHUPS, PREFLOP_FACTS } from "@/lib/games/poker";
 import { pct } from "@/lib/stats";
 
 export const metadata: Metadata = {
   title: "Poker — the beatable game that most people lose at",
   description:
-    "The house isn't your opponent in poker; it's a fixed tax on every pot. Model the rake, see what it does to a real win rate, and learn why skill and profit are different questions.",
+    "In poker the house takes a fixed cut of every pot instead of playing against you. Model the rake, see what it does to a real win rate, and learn why skill and profit are different questions.",
 };
 
 export default function PokerPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Lesson 8 · The rake"
+      <GameTop
+        game="Poker"
+        concept="The rake"
         accent="violet"
-        title={
-          <>
-            You can be the best player at the table and still go home down.
-          </>
-        }
+        title={<>You can be the best player at the table and still go home down.</>}
         lede={
           <>
-            Poker is the only game in the casino with no house edge — the house
-            doesn&apos;t play. Instead it removes a percentage of every pot. That
-            turns a zero-sum game between players into a negative-sum one, and
-            the amount removed is usually larger than the edge separating a good
-            player from a bad one.
+            Set the sliders to a game you have actually sat in. The number that
+            matters is bottom-right, and the chart beside it shows what that
+            number does to people who are genuinely good at this.
           </>
         }
         stats={[
-          { label: "House edge", value: "0%", note: "the house isn't in the hand" },
+          { label: "House edge", value: "0%", note: "the house sits out the hand" },
           { label: "Rake, live $1/$2", value: "~10 BB/100", note: "with the dealer toke" },
           { label: "Strong win rate", value: "~6 BB/100", note: "before rake, and genuinely hard" },
-          { label: "Net", value: "−4 BB/100", note: "do the subtraction" },
+          { label: "Net", value: "\u22124 BB/100", note: "do the subtraction" },
         ]}
-      />
+      >
+        <RakeLab />
+      </GameTop>
 
       <Marquee
         tone="violet"
-        items={["zero sum between players", "negative sum after the rake", "skill ≠ profit"]}
+        items={["zero sum between players", "negative sum after the rake", "skill and profit differ"]}
       />
-
-      {/* ---------------- the rake ---------------- */}
-      <Section
-        tone="felt"
-        eyebrow="The whole lesson"
-        title="A fixed tax on a zero-sum game"
-        lede={
-          <>
-            Move the sliders to a game you have actually sat in. The number that
-            matters is at the bottom right, and the chart beside it shows what
-            that number does to people who are genuinely good at this.
-          </>
-        }
-      >
-        <RakeLab />
-      </Section>
 
       {/* ---------------- why it's different ---------------- */}
       <Section
         eyebrow="Why this game is different"
-        title="Everywhere else, the house is your opponent. Here it is your landlord."
+        title="Everywhere else the house plays against you. Here it is your landlord."
       >
         <div className="grid gap-10 lg:grid-cols-2">
           <Prose>
@@ -275,20 +256,7 @@ export default function PokerPage() {
         </TableWrap>
       </Section>
 
-      <Section tone="felt" className="border-b-0">
-        <div className="flex flex-col items-start gap-6">
-          <Badge tone="paper">Finish</Badge>
-          <h2 className="text-h3 md:text-h2 max-w-3xl font-bold text-balance text-cream">
-            Four games, one structure. Here is the whole course in one page.
-          </h2>
-          <Link
-            href="/course"
-            className="brut-sm brut-press rounded-[50px] bg-amber px-6 py-3 text-sm font-bold tracking-wide text-ink uppercase"
-          >
-            The seven lessons →
-          </Link>
-        </div>
-      </Section>
+      <GameSwitcher current="/poker" />
     </>
   );
 }

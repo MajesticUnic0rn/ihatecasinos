@@ -166,7 +166,7 @@ export function RakeLab() {
           </strong>{" "}
           {after[1].net > 0
             ? "Barely. And that assumes they're genuinely top-tier, never tilt, and the table stays soft."
-            : `Beating the other players by 6 BB/100 is a real, hard-won skill. It is not enough, because the rake takes ${m.bbPer100.toFixed(1)}. The game is unbeatable regardless of how well anyone plays it.`}
+            : `Beating the other players by 6 BB/100 is a real, hard-won skill. The rake takes ${m.bbPer100.toFixed(1)}, so the game stays unbeatable regardless of how well anyone plays it.`}
         </div>
       </div>
     </div>

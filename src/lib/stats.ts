@@ -71,7 +71,7 @@ export interface MartingaleAnalysis {
  * The result students find counterintuitive: pGrind is enormous
  * (often 99.9%), and the EV is still exactly the flat-bet EV. The
  * progression buys a pleasant win rate by selling a rare, total loss.
- * It is a distribution reshaping tool, not an edge.
+ * The progression only reshapes the distribution; the edge is untouched.
  */
 export function analyzeMartingale(
   bankrollUnits: number,

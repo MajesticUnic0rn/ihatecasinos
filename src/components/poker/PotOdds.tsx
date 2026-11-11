@@ -144,10 +144,10 @@ export function PotOdds() {
             <strong className="mb-1.5 block text-cream">
               This is the entire skill.
             </strong>
-            Not reads, not tells, not courage. Poker is a long sequence of
-            moments exactly like this one, and the players who win are the ones
-            who get this comparison right more often — then accept that being
-            right has no bearing on whether this particular card comes.
+            Poker is a long sequence of moments exactly like this one. The
+            players who win are the ones who get this comparison right more
+            often, then accept that being right has no bearing on whether this
+            particular card comes.
           </div>
 
           <div className="grid grid-cols-3 gap-4">

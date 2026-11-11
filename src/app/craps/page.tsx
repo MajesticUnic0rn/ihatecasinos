@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PageHero, Section, Prose } from "@/components/PageHero";
+import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
 import { CrapsLab } from "@/components/craps/CrapsLab";
 import { EdgeBars } from "@/components/viz/charts";
-import { Badge, Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
+import { Callout, Marquee, Panel, Stat, TableWrap } from "@/components/ui";
 import {
   CRAPS_BETS,
   ODDS_LADDER,
@@ -30,30 +29,28 @@ const ladderRows = ODDS_LADDER.filter((l) => l.multiple <= 20).map((l) => ({
 export default function CrapsPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Lesson 7 · Vig and free odds"
+      <GameTop
+        game="Craps"
+        concept="Vig and free odds"
         accent="amber"
-        title={
-          <>
-            One bet here takes nothing at all. It is the one nobody is shouting
-            about.
-          </>
-        }
+        title={<>One bet here takes nothing at all, and nobody is shouting about it.</>}
         lede={
           <>
-            Craps is the loudest game on the floor and the most honestly
-            documented. Every outcome comes from the same 36-row table, so every
-            price is checkable — which makes the spread between the good bets
-            and the terrible ones impossible to explain as anything but design.
+            Throw the dice — real rigid bodies, a back wall to hit,
+            deterministic on a fixed timestep. Slide the free odds up and watch
+            the blended edge fall. The histogram below creeps toward the grey
+            ticks as you roll.
           </>
         }
         stats={[
           { label: "Pass line", value: "1.41%", note: "244 ways win, 251 lose" },
           { label: "Free odds", value: "0.00%", note: "paid at exactly true odds" },
-          { label: "Pass + 3-4-5×", value: pct(pass345Edge(), 3), note: "the best bet in the house" },
+          { label: "Pass + 3-4-5\u00d7", value: pct(pass345Edge(), 3), note: "the best bet in the house" },
           { label: "Any 7", value: "16.67%", note: "the worst, six inches away" },
         ]}
-      />
+      >
+        <CrapsLab />
+      </GameTop>
 
       <Marquee
         tone="ink"
@@ -150,22 +147,6 @@ export default function CrapsPage() {
         </div>
       </Section>
 
-      {/* ---------------- lab ---------------- */}
-      <Section
-        tone="felt"
-        eyebrow="Throw them"
-        title="Real physics, real dice, and the distribution asserting itself"
-        lede={
-          <>
-            These dice are simulated rather than drawn from a random number —
-            rigid bodies, a back wall to hit, deterministic on a fixed timestep.
-            Watch the histogram at the bottom crawl toward the grey ticks.
-          </>
-        }
-      >
-        <CrapsLab />
-      </Section>
-
       {/* ---------------- odds ---------------- */}
       <Section
         eyebrow="The good bet"
@@ -173,7 +154,7 @@ export default function CrapsPage() {
         lede={
           <>
             Once a point is set, you may put an additional bet behind the line
-            that pays exactly what the math says. Not approximately. Exactly.
+            that pays exactly what the math says, to the cent.
           </>
         }
       >
@@ -196,8 +177,8 @@ export default function CrapsPage() {
               edge = (7/495) ÷ (1 + ⅔ × multiple)
             </p>
             <p>
-              You are not getting a better bet. You are{" "}
-              <strong>diluting a fixed loss across more money</strong>. Your
+              The odds bet{" "}
+              <strong>dilutes a fixed loss across more money</strong>. Your
               expected dollar loss per decision is identical; your variance goes
               up substantially. That is a real trade-off, not a free lunch — but
               it is the best trade available.
@@ -206,8 +187,8 @@ export default function CrapsPage() {
             <p>
               Free odds appear nowhere on the felt. There is no box for them.
               You have to know they exist, and know to ask. A bet with zero
-              house edge is not a promotion — it is a concession, and
-              concessions are not printed in large type.
+              house edge is a concession, and concessions get printed in small
+              type.
             </p>
           </Prose>
 
@@ -318,21 +299,7 @@ export default function CrapsPage() {
         </div>
       </Section>
 
-      <Section tone="paper" className="border-b-0">
-        <div className="flex flex-col items-start gap-6">
-          <Badge tone="violet">Next</Badge>
-          <h2 className="text-h3 md:text-h2 max-w-3xl font-bold text-balance">
-            Poker is the one game you can actually beat. Which is exactly why
-            most people who play it lose.
-          </h2>
-          <Link
-            href="/poker"
-            className="brut-sm brut-press rounded-[50px] bg-violet px-6 py-3 text-sm font-bold tracking-wide text-white uppercase"
-          >
-            Lesson 8 · Poker →
-          </Link>
-        </div>
-      </Section>
+      <GameSwitcher current="/craps" />
     </>
   );
 }

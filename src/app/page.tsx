@@ -160,9 +160,8 @@ export default function Home() {
         title="Seven ideas, layered — each game teaches the next one"
         lede={
           <>
-            The games are the setting, not the subject. What you should still
-            have a year from now is this list, and none of it is about
-            gambling.
+            The games are only the setting. What you should still have a year
+            from now is this list, and none of it is about gambling.
           </>
         }
       >

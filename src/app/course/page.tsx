@@ -269,7 +269,7 @@ export default function CoursePage() {
               The math is the honest part. It is published, it is checkable, and
               it says the same thing everywhere you look: the edge is small, it
               is relentless, and it applies to every dollar that crosses the
-              felt rather than to the ones in your pocket.
+              felt, which is a far larger number than the one in your pocket.
             </p>
             <p>
               Understanding it won&apos;t make you win. It will make the whole

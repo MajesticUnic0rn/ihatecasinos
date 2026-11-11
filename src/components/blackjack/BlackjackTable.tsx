@@ -201,7 +201,7 @@ export function BlackjackTable() {
 
     if (anyLive) {
       // Dealer stands on ALL 17s, soft included — the S17 rule the whole
-      // chart above assumes. Under H17 every doubling decision shifts.
+      // chart on this page assumes. Under H17 every doubling shifts.
       while (true) {
         const v = evaluate(dcards);
         if (v.total >= 17) break;
@@ -272,7 +272,14 @@ export function BlackjackTable() {
   return (
     <div className="felt-panel overflow-hidden p-0">
       {/* ---- table ---- */}
-      <div className="relative min-h-[460px] border-b-2 border-ink p-6 md:p-8">
+      <div
+        className={cx(
+          "relative border-b-2 border-ink p-6 transition-[min-height] md:p-8",
+          // Idle tables should not reserve space for cards that are not
+          // there — it pushes Deal below the fold on the game-first layout.
+          hands.length === 0 ? "min-h-[240px]" : "min-h-[460px]",
+        )}
+      >
         <div className="absolute top-5 right-6 flex flex-wrap gap-2">
           <Badge tone="ink">{DECKS} decks · S17 · DAS</Badge>
           <Badge tone={payout === "3:2" ? "mint" : "ember"}>
@@ -350,8 +357,8 @@ export function BlackjackTable() {
             })}
             {hands.length === 0 && (
               <p className="py-10 text-sm text-cream/45">
-                Press deal. The coach will grade every decision against the
-                chart above.
+                Press deal. The coach grades every decision against the
+                strategy chart further down the page.
               </p>
             )}
           </div>
@@ -416,9 +423,9 @@ export function BlackjackTable() {
                 <strong className="mb-1 block text-cream">
                   Every decision is graded.
                 </strong>
-                Basic strategy is not a guess — it is the exact play that
-                maximises expectation for each of the 300-odd situations the
-                game can produce.
+                Basic strategy gives the exact play that maximises expectation
+                for each of the 300-odd situations the game can produce. Every
+                one was solved by brute force decades ago.
               </>
             )}
           </div>

@@ -2,8 +2,8 @@
  * Poker: the only beatable game in the building, which is exactly why
  * most people who play it lose.
  *
- * The house is not your opponent here — it is a fixed percentage
- * removed from every pot. That converts a zero-sum game between players
+ * The house sits out the hand here and takes a fixed percentage
+ * of every pot instead. That converts a zero-sum game between players
  * into a negative-sum one, and the size of that negative is almost
  * always larger than the edge a decent player has over a bad one.
  */

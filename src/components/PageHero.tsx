@@ -1,4 +1,128 @@
+import Link from "next/link";
 import { Badge, cx } from "@/components/ui";
+import { GAMES } from "@/lib/content";
+
+const ACCENT_BG = {
+  violet: "bg-violet",
+  ember: "bg-ember",
+  lagoon: "bg-lagoon",
+  amber: "bg-amber",
+} as const;
+
+type Accent = keyof typeof ACCENT_BG;
+
+/**
+ * Game pages lead with the game.
+ *
+ * A short title and one paragraph of setup, then the thing you can
+ * actually touch — above the fold on a laptop. The written lessons come
+ * after, so each page stands alone and nothing has to be read in order.
+ */
+export function GameTop({
+  game,
+  concept,
+  title,
+  lede,
+  stats,
+  accent = "violet",
+  children,
+}: {
+  game: string;
+  concept: string;
+  title: React.ReactNode;
+  lede: React.ReactNode;
+  stats?: { label: string; value: string; note?: string }[];
+  accent?: Accent;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="felt grain relative overflow-hidden border-b-2 border-ink">
+      <div
+        aria-hidden
+        className={cx(
+          "absolute -top-40 -right-32 h-[26rem] w-[26rem] rounded-full opacity-20 blur-[100px]",
+          ACCENT_BG[accent],
+        )}
+      />
+      <div className="relative z-10 mx-auto max-w-7xl px-5 py-10 md:px-8 md:py-14">
+        <div className="mb-8 flex flex-col gap-5 md:mb-10 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Badge tone="paper">{game}</Badge>
+              <Badge tone="violet">{concept}</Badge>
+            </div>
+            <h1 className="text-h3 md:text-h2 font-bold text-balance text-cream">
+              {title}
+            </h1>
+          </div>
+          <p className="max-w-md text-base leading-relaxed text-pretty text-cream/70">
+            {lede}
+          </p>
+        </div>
+
+        {/* the game */}
+        {children}
+
+        {stats && (
+          <dl className="mt-10 grid gap-6 border-t border-cream/15 pt-8 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((s) => (
+              <div key={s.label} className="flex flex-col gap-1.5">
+                <dt className="text-[0.7rem] font-bold tracking-[0.08em] text-cream/45 uppercase">
+                  {s.label}
+                </dt>
+                <dd className="tnum font-mono text-3xl font-bold text-cream">
+                  {s.value}
+                </dd>
+                {s.note && (
+                  <dd className="text-xs leading-snug text-cream/50">{s.note}</dd>
+                )}
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Footer nav for game pages. Shows every OTHER game plus the course, so
+ * the pages form a hub instead of a chain you have to walk in order.
+ */
+export function GameSwitcher({ current }: { current: string }) {
+  const others = GAMES.filter((g) => g.href !== current);
+  return (
+    <Section tone="felt" className="border-b-0">
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
+        <h2 className="text-h4 md:text-h3 max-w-2xl font-bold text-balance text-cream">
+          Same structure, different disguise. Pick any of them.
+        </h2>
+        <Link
+          href="/course"
+          className="brut-sm brut-press rounded-[50px] bg-amber px-5 py-2.5 text-sm font-bold tracking-wide text-ink uppercase"
+        >
+          All seven concepts →
+        </Link>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        {others.map((g) => (
+          <Link
+            key={g.href}
+            href={g.href}
+            className="group flex flex-col gap-3 rounded-[16px] border-2 border-ink bg-felt p-6 transition-colors hover:bg-felt-deep"
+          >
+            <span className="text-3xl">{g.glyph}</span>
+            <h3 className="text-h4 font-bold text-cream">{g.title}</h3>
+            <p className="text-sm leading-relaxed text-cream/60">{g.lesson}</p>
+            <span className="mt-1 text-[0.7rem] font-bold tracking-[0.08em] text-amber uppercase">
+              Play it →
+            </span>
+          </Link>
+        ))}
+      </div>
+    </Section>
+  );
+}
 
 export function PageHero({
   eyebrow,

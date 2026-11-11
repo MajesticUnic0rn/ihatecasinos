@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PageHero, Section, Prose } from "@/components/PageHero";
+import { GameTop, GameSwitcher, Section, Prose } from "@/components/PageHero";
 import { StrategyChart } from "@/components/blackjack/StrategyChart";
 import { BlackjackTable } from "@/components/blackjack/BlackjackTable";
 import { EdgeBars } from "@/components/viz/charts";
@@ -17,8 +16,9 @@ export const metadata: Metadata = {
 export default function BlackjackPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Lesson 6 · Conditional probability"
+      <GameTop
+        game="Blackjack"
+        concept="Conditional probability"
         accent="lagoon"
         title={
           <>
@@ -28,10 +28,9 @@ export default function BlackjackPage() {
         }
         lede={
           <>
-            Blackjack is the one major casino game where your decisions move
-            the number — from roughly 2% down to 0.5%. It is also the game
-            where the house quietly changed a single payout and took almost all
-            of that back, from players who never noticed.
+            Play a real 6-deck shoe. Every decision is graded against the
+            chart. Flip the payout to 6:5 and watch your bankroll change while
+            your play stays identical.
           </>
         }
         stats={[
@@ -40,11 +39,13 @@ export default function BlackjackPage() {
           { label: "Average player", value: "~2.0%", note: "strategy errors, mostly timid" },
           { label: "P(natural)", value: pct(P_BLACKJACK, 2), note: "and this is what they repriced" },
         ]}
-      />
+      >
+        <BlackjackTable />
+      </GameTop>
 
       <Marquee
         tone="violet"
-        items={["3 to 2", "not 6 to 5", "check the felt", "every single time"]}
+        items={["read the felt first", "3 to 2 pays", "decline insurance", "split aces and eights"]}
       />
 
       {/* ---------------- dealer upcard ---------------- */}
@@ -98,17 +99,17 @@ export default function BlackjackPage() {
                 deck — and even surviving leaves you with a weak total.
               </p>
               <p>
-                Basic strategy is not a chart of winning plays. It is a chart of{" "}
-                <em>least-losing</em> plays, which is a much harder thing to
-                follow, because every correct decision still feels wrong a
+                Basic strategy is a chart of <em>least-losing</em> plays,
+                which makes it much harder to follow than a chart of winning
+                ones, because every correct decision still feels wrong a
                 majority of the time.
               </p>
             </Prose>
 
             <Callout kind="key" title="The transferable bit">
               <p>
-                &ldquo;This option loses money&rdquo; is not an argument against
-                it. The question is always whether it loses <em>less</em> than
+                &ldquo;This option loses money&rdquo; settles nothing on its
+                own. The question is always whether it loses <em>less</em> than
                 the alternative. People who internalise this stop making a
                 particular class of decision error well outside casinos.
               </p>
@@ -131,23 +132,6 @@ export default function BlackjackPage() {
         }
       >
         <StrategyChart />
-      </Section>
-
-      {/* ---------------- playable ---------------- */}
-      <Section
-        tone="felt"
-        eyebrow="Play it"
-        title="Every decision graded against the chart"
-        lede={
-          <>
-            Real 6-deck shoe, real shuffle, dealer stands on soft 17. Flip the
-            payout to 6:5 and watch the bankroll curve change without a single
-            rule of play changing. Turn the count on and the card finishes start
-            meaning something.
-          </>
-        }
-      >
-        <BlackjackTable />
       </Section>
 
       {/* ---------------- 6:5 ---------------- */}
@@ -223,8 +207,8 @@ export default function BlackjackPage() {
             <Prose className="max-w-none text-[1rem]">
               <p>
                 Dealer shows an ace and offers &ldquo;insurance&rdquo; at 2:1.
-                It is not insurance — it is an independent side bet on whether
-                the hole card is a ten.
+                The name does a lot of work here. What you are being offered
+                is an independent side bet on whether the hole card is a ten.
               </p>
               <p>
                 With six decks and three cards visible, 96 of the 311 unseen
@@ -274,11 +258,11 @@ export default function BlackjackPage() {
                 pressure for hours.
               </p>
               <p>
-                <strong>And then they bar you.</strong> Casinos are private
-                property. Counting is not illegal; being asked to leave is also
-                not illegal. The best outcome available to a world-class
-                advantage player is a slightly profitable job that ends the
-                moment it starts working.
+                <strong>And then they bar you.</strong> Counting is legal.
+                Casinos are also private property, and may ask you to leave at
+                any time for any reason. The best outcome available to a
+                world-class advantage player is a slightly profitable job that
+                ends the moment it starts working.
               </p>
             </Prose>
           </Panel>
@@ -336,21 +320,7 @@ export default function BlackjackPage() {
         </div>
       </Section>
 
-      <Section tone="paper" className="border-b-0">
-        <div className="flex flex-col items-start gap-6">
-          <Badge tone="violet">Next</Badge>
-          <h2 className="text-h3 md:text-h2 max-w-3xl font-bold text-balance">
-            Craps puts the best bet and the worst bet in the house within six
-            inches of each other, and only shouts about one of them.
-          </h2>
-          <Link
-            href="/craps"
-            className="brut-sm brut-press rounded-[50px] bg-violet px-6 py-3 text-sm font-bold tracking-wide text-white uppercase"
-          >
-            Lesson 7 · Craps →
-          </Link>
-        </div>
-      </Section>
+      <GameSwitcher current="/blackjack" />
     </>
   );
 }
